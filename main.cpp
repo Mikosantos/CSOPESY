@@ -4,14 +4,6 @@
 #include <sstream>
 
 using namespace std;
-
-struct ScreenData {
-	string processName;
-	int currentLine;
-	int totalLines;
-	string timestamp;
-};
-
 bool inScreen = false;
 
 void setColor( unsigned char color )
