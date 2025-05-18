@@ -2,6 +2,8 @@
 #include <windows.h>
 #include <map>
 #include <sstream>
+#include <vector>
+#include <ctime>
 
 using namespace std;
 bool inScreen = false;
@@ -29,8 +31,50 @@ void initialize() {
 	cout << "'initialize' command recognized. Doing something.\n";
 }
 
-void screen() {
+string getTimestamp() {
+	time_t timestamp;
+	tm * tm_stamp;
+	char ts_string[100];
+			
+	time(&timestamp);
+	tm_stamp = localtime(&timestamp);
+			
+	strftime(ts_string, 100, "%m/%d/%Y, %I:%M:%S %p", tm_stamp);
+
+	return ts_string;
+}
+
+
+void screen(vector<string> args, vector<string> processes) {
 	cout << "'screen' command recognized. Doing something.\n";
+
+	if (args.size() >= 2) {
+		string cmd = args[0];
+		string process_name = args[1];
+		
+		if (cmd == "-s" && !process_name.empty()) {
+			system("cls");
+			cout << "Process: " << process_name << "\n\n";
+			processes.push_back(process_name);
+
+			cout << "Current line of instruction: " << 32 << "\n";
+			cout << "Total lines of instruction: " << 32 << "\n\n";
+
+			string timestamp = getTimestamp();
+			cout << "Timestamp: " << timestamp << "\n";
+
+		} else if (cmd == "-r" && !process_name.empty()) {
+			system("cls");
+			cout << "Process: " << process_name << "\n\n";
+
+			// TODO: redraw console of current process
+
+		} else {
+			cout << "Invalid screen command.\n";
+		}
+	} else {
+		cout << "No screen arguments provided.\n";
+	}
 }
 
 void scheduler_test() {
@@ -65,15 +109,19 @@ void exit() {
 }
 
 
-pair<string, string> parseCommand(const string& input) {
+pair<string, vector<string>> parseCommand(const string& input) {
 	istringstream stream(input);
-	string cmd, argument;
+	string cmd;
 	stream >> cmd;
-	getline(stream, argument);
-	if (!argument.empty() && argument[0] == ' ') {
-	argument = argument.substr(1);
+
+	vector<string> args;
+	string arg;
+	
+	while (stream >> arg) {
+		args.push_back(arg);
 	}
-	return {cmd, argument};
+
+	return {cmd, args};
 }
 
 int main() {
@@ -84,14 +132,16 @@ int main() {
 		cout << "Enter a command: ";
 		getline(cin, input);
 		
-		pair<string, string> parsedCommand = parseCommand(input);
+		pair<string, vector<string>> parsedCommand = parseCommand(input);
 		string cmd = parsedCommand.first;
-		string argument = parsedCommand.second;
+		vector<string> args = parsedCommand.second;
+
+		vector<string> processes = {};
 		
 		if (cmd == "initialize"  && inScreen == false) {
 			initialize();
 		} else if (cmd == "screen" && inScreen == false) {
-			screen();
+			screen(args, processes);
 		} else if (cmd == "scheduler-test" && inScreen == false) {
 			scheduler_test();
 		} else if (cmd == "scheduler-stop" && inScreen == false) {
