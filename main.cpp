@@ -4,9 +4,19 @@
 #include <sstream>
 #include <vector>
 #include <ctime>
+#include <cstdlib>   // rand, srand
 
 using namespace std;
 bool inScreen = false;
+
+struct ScreenInfo {
+    string name;
+    int currentLine;
+    int totalLines;
+    string timestamp;
+};
+
+vector<string> processNames; // global variable to store process names for checking
 
 void setColor( unsigned char color )
 {
@@ -44,36 +54,64 @@ string getTimestamp() {
 	return ts_string;
 }
 
+bool processExists(const string& name) {
+	for (string& p : processNames) {
+		if (p == name) return true;
+	}
+	return false;
+}
 
-void screen(vector<string> args, vector<string> processes) {
-	cout << "'screen' command recognized. Doing something.\n";
+void displayScreen(const ScreenInfo& screen) {
+	system("cls");
+	cout << "==================== SCREEN: " << screen.name << " ====================\n";
+	cout << "Process: " << screen.name << "\n\n";
+	cout << "Current line of instruction: " << screen.currentLine << "\n";
+	cout << "Total lines of instruction: " << screen.totalLines << "\n\n";
+	cout << "Timestamp: " << screen.timestamp << "\n";
+	cout << "=====================================================\n";
+	// cout << "[ " << screen.name << " ] $ ";
+}
 
-	if (args.size() >= 2) {
-		string cmd = args[0];
-		string process_name = args[1];
-		
-		if (cmd == "-s" && !process_name.empty()) {
-			system("cls");
-			cout << "Process: " << process_name << "\n\n";
-			processes.push_back(process_name);
+void screen(vector<string> args, vector<ScreenInfo>& processes) {
+	if (args.size() < 2) {
+		cout << "Invalid screen command.\n\n";
+		return;
+	}
 
-			cout << "Current line of instruction: " << 32 << "\n";
-			cout << "Total lines of instruction: " << 32 << "\n\n";
+	string option = args[0];
+	string process_name = args[1];
 
-			string timestamp = getTimestamp();
-			cout << "Timestamp: " << timestamp << "\n";
-
-		} else if (cmd == "-r" && !process_name.empty()) {
-			system("cls");
-			cout << "Process: " << process_name << "\n\n";
-
-			// TODO: redraw console of current process
-
-		} else {
-			cout << "Invalid screen command.\n";
+	if (option == "-s") {
+		// Check if process already exists
+		for (ScreenInfo& s : processes) {
+			if (s.name == process_name) {
+				cout << "Process '" << process_name << "' already exists. Use -r to resume.\n\n";
+				return;
+			}
 		}
+
+		// Create and store new screen (store in vector)
+		ScreenInfo newScreen;
+		newScreen.name = process_name;
+		newScreen.currentLine = 1 + rand() % 100;
+		newScreen.totalLines = newScreen.currentLine + rand() % 100;
+		newScreen.timestamp = getTimestamp();
+
+		processes.push_back(newScreen);
+		inScreen = true;
+		displayScreen(newScreen);
+
+	} else if (option == "-r") {
+		for (ScreenInfo& s : processes) {
+			if (s.name == process_name) {
+				inScreen = true;
+				displayScreen(s);
+				return;
+			}
+		}
+		cout << "No such screen '" << process_name << "' found.\n";
 	} else {
-		cout << "No screen arguments provided.\n";
+		cout << "Unknown option for screen command.\n";
 	}
 }
 
@@ -88,6 +126,35 @@ void scheduler_stop() {
 void report_util() {
 	cout << "'report-util' command recognized. Doing something.\n";
 }
+
+//
+void listAvailableScreens(const vector<ScreenInfo>& processes) {
+    if (processes.empty()) {
+        cout << "No screens available.\n\n";
+        return;
+    }
+
+    // cout << "Available screens:\n";
+    for (const ScreenInfo& p : processes) {
+        cout << "- " << p.name << endl;
+    }
+	cout << "\n";
+}
+
+void printHelpMenu() {
+    cout << "  initialize        - Initialize system\n";
+    cout << "  screen -s <name>  - Start new screen\n";
+    cout << "  screen -r <name>  - Resume existing screen\n";
+    cout << "  scheduler-test    - Run scheduler test\n";
+    cout << "  scheduler-stop    - Stop scheduler\n";
+    cout << "  report-util       - Display utilization report\n";
+    cout << "  clear             - Clear the screen\n";
+    cout << "  ls                - List all screen processes\n";
+    cout << "  help              - Show this help menu\n";
+    cout << "  exit              - Exit the program\n";
+	cout << "\n";
+}
+//
 
 void clear() {
 	cout << "'clear' command recognized. Doing something.\n";
@@ -108,7 +175,6 @@ void exit() {
     }
 }
 
-
 pair<string, vector<string>> parseCommand(const string& input) {
 	istringstream stream(input);
 	string cmd;
@@ -125,18 +191,24 @@ pair<string, vector<string>> parseCommand(const string& input) {
 }
 
 int main() {
+	srand(static_cast<unsigned>(time(nullptr)));
+
 	header();
 	string input;
+	vector<ScreenInfo> processes;
 	
 	while (true) {
-		cout << "Enter a command: ";
+		if (inScreen) {
+			cout << "[ " << processes.back().name << " ] $ ";
+		} else {
+			cout << "Enter a command: ";
+		}
+		
 		getline(cin, input);
 		
 		pair<string, vector<string>> parsedCommand = parseCommand(input);
 		string cmd = parsedCommand.first;
 		vector<string> args = parsedCommand.second;
-
-		vector<string> processes = {};
 		
 		if (cmd == "initialize"  && inScreen == false) {
 			initialize();
@@ -148,10 +220,16 @@ int main() {
 			scheduler_stop();
 		} else if (cmd == "report-util" && inScreen == false) {
 			report_util();
+		// mema add lang
+		}  else if (cmd == "ls" && inScreen == false) {
+			listAvailableScreens(processes);
+		//
+		} else if (cmd == "help" && inScreen == false) {
+			printHelpMenu();
 		} else if (cmd == "clear" && inScreen == false) {
 			clear();
 		} else if (cmd == "exit") {
 			exit();
-		} else cout << "Command not recognized.\n";
+		} else cout << "Command not recognized.\n\n";
 	}
 }
