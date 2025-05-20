@@ -49,13 +49,13 @@ void ConsolePanel::setCurrentScreen(std::shared_ptr<Console> screenPanel){
 
 void ConsolePanel::listAvailableScreens(){
     for (const auto& consolePtr : ConsolePanel::consolePanels) {
-        std::cout << "Console Name: " << consolePtr->getConsoleName() << std::endl;
+        std::cout << "Console Name: " << consolePtr->getConsoleName() << "\n\n";
     }
     std::cout << "Currently Selected Console: ";
     if (ConsolePanel::curPanel != nullptr) {
-        std::cout << ConsolePanel::curPanel->getConsoleName() << std::endl;
+        std::cout << ConsolePanel::curPanel->getConsoleName() << "\n\n";
     } else {
-        std::cout << "None selected" << std::endl;
+        std::cout << "None selected" << "\n\n";
     }
 }   
 

@@ -49,7 +49,7 @@ int main() {
         vector<string> args = parsedCommand.second;
 
         if (cmd != "initialize" && cmd != "exit" && !hasInitialized) {
-            cout << "Initialize the program with command \"initialize\" first!" << endl;
+            cout << "Initialize the program with command \"initialize\" first!" << "\n\n";
             continue;
         }
 
@@ -130,7 +130,7 @@ int main() {
             }
         } 
         else if ((args.size() >= 2 && ((args[0] == "-s" && !args[1].empty()) || (args[0] == "-r" && !args[1].empty()))) && (consolePanel.getCurrentScreenName() != "MAIN_SCREEN")) {
-            cout << "Command not recognized.\n" << endl;
+            cout << "Command not recognized.\n\n";
         } else if (cmd == "initialize" && !hasInitialized && consolePanel.getCurrentScreenName() == "MAIN_SCREEN") {
             initialize();
             hasInitialized = true;
@@ -157,7 +157,7 @@ int main() {
             cout << "Finished!" << "\n\n\n";
         } 
         else {
-            cout << "Unknown command! Type \"ls\" for commandlist." << endl;
+            cout << "Unknown command! Type \"help\" for commandlist." << "\n\n";
         }
     }
 }
@@ -207,19 +207,19 @@ pair<string, vector<string>> parseCommand(const string& input) {
 }
 
 void initialize() {
-	cout << "'initialize' command recognized. Doing something.\n";
+	cout << "'initialize' command recognized. Doing something.\n\n";
 }
 
 void scheduler_start() {
-	cout << "'scheduler-start' command recognized. Doing something.\n";
+	cout << "'scheduler-start' command recognized. Doing something.\n\n";
 }
 
 void scheduler_stop() {
-	cout << "'scheduler-stop' command recognized. Doing something.\n";
+	cout << "'scheduler-stop' command recognized. Doing something.\n\n";
 }
 
 void report_util() {
-	cout << "'report-util' command recognized. Doing something.\n";
+	cout << "'report-util' command recognized. Doing something.\n\n";
 }
 
 void printHelpMenu() {
@@ -232,8 +232,7 @@ void printHelpMenu() {
     cout << "  clear             - Clear the screen\n";
     cout << "  ls                - List all screen processes\n";
     cout << "  help              - Show this help menu\n";
-    cout << "  exit              - Exit the program\n";
-	  cout << "\n";
+    cout << "  exit              - Exit the program\n\n";
 }
 
 void handleExit() {
