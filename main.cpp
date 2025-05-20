@@ -172,6 +172,7 @@ void displayProcessScreen(shared_ptr<Process> newProcess){
     cout << "Lines of code: " << newProcess->getTotalNoOfCommands() << "\n";
     cout << "=====================================================\n";
 }
+
 void setColor( unsigned char color ){
 	SetConsoleTextAttribute( GetStdHandle( STD_OUTPUT_HANDLE ), color );
 }
@@ -232,7 +233,7 @@ void printHelpMenu() {
     cout << "  ls                - List all screen processes\n";
     cout << "  help              - Show this help menu\n";
     cout << "  exit              - Exit the program\n";
-	cout << "\n";
+	  cout << "\n";
 }
 
 void handleExit() {
