@@ -48,6 +48,17 @@ void ConsolePanel::setCurrentScreen(std::shared_ptr<Console> screenPanel){
 }
 
 void ConsolePanel::listAvailableScreens() {
+
+    std::cout << "========== System Summary ============\n";
+    std::cout << "CPU Utilization: "    << 100 << "%\n";
+    std::cout << "Cores Used: "         << 16 << "\n";
+    std::cout << "Cores available: "    << 0 << "\n\n";
+
+    std::cout << "--------------------------------------\n";
+    std::cout << "Running Processes: \n\n";
+    std::cout << "Finished Processes: \n";
+    std::cout << "======================================\n\n";
+
     std::cout << "Available Screens:\n";
     std::cout << "------------------\n";
 
@@ -55,7 +66,7 @@ void ConsolePanel::listAvailableScreens() {
         std::cout << consolePtr->getConsoleName() << "\n";
     }
 
-    std::cout << "------------------\n\n";
+    std::cout << "\n";
 
     // std::cout << "\nCurrently Selected Console: ";
     // if (ConsolePanel::curPanel != nullptr) {

@@ -161,10 +161,6 @@ int main() {
             }
         } 
 
-        // else if ((args.size() >= 2 && ((args[0] == "-s" && !args[1].empty()) || (args[0] == "-r" && !args[1].empty()))) && (consolePanel.getCurrentScreenName() != "MAIN_SCREEN")) {
-        //     cout << "Command not recognized.\n\n";
-        // } 
-
         // initialize command
         else if (cmd == "initialize" && !hasInitialized && consolePanel.getCurrentScreenName() == "MAIN_SCREEN") {
             initialize();
