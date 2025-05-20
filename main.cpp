@@ -95,7 +95,7 @@ int main() {
         }
 
         // -s command
-        else if (cmd == "screen" && args.size() >= 2 && args[0] == "-s") {
+        else if (cmd == "screen" && args.size() >= 2 && args[0] == "-s" && consolePanel.getCurrentScreenName() == "MAIN_SCREEN") {
             bool exists = false;
             for (auto& consolePtr : screens) {
                 if (consolePtr->getConsoleName() == args[1]) {
@@ -124,7 +124,7 @@ int main() {
         }
         
         // -r command (checking for existing screen)
-        else if (cmd == "screen" && args.size() >= 2 && args[0] == "-r") {
+        else if (cmd == "screen" && args.size() >= 2 && args[0] == "-r" && consolePanel.getCurrentScreenName() == "MAIN_SCREEN") {
             screenProcessName = args[1];
 
             // Check if the screen and process exist first
@@ -199,6 +199,11 @@ int main() {
             }
             cout << "Finished!" << "\n\n";
         } 
+
+        else if (consolePanel.getCurrentScreenName() != "MAIN_SCREEN" && cmd != "exit" && cmd != "process-smi") {
+            cout << "Only 'exit' and 'process-smi' commands are allowed inside a process screen.\n\n";
+            continue;
+        }
         
         // error command/s
         else {
