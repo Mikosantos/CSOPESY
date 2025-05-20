@@ -29,6 +29,9 @@ void clearToProcessScreen();
 void displayProcessScreen(shared_ptr<Process> nProcess);
 
 int main() {
+
+    srand(static_cast<unsigned>(time(nullptr)));
+
     string input;
     ConsolePanel consolePanel;
     bool notShuttingDown = true;
@@ -42,7 +45,7 @@ int main() {
     header();
 
     while (notShuttingDown) {
-        cout << "Enter a command: ";
+        cout << "root:\\> ";
         getline(cin, input);
         parsedCommand = parseCommand(input);
         string  cmd = parsedCommand.first;
@@ -69,6 +72,7 @@ int main() {
 
         vector<shared_ptr<Console>> screens = consolePanel.getConsolePanels();
 
+        // exit command
         if ((consolePanel.getCurrentScreenName() != "MAIN_SCREEN") && cmd == "exit") {
             system("cls");
             for (auto& screenPtr : screens) {
@@ -80,11 +84,17 @@ int main() {
             if (consolePanel.getCurrentScreenName() == "MAIN_SCREEN") {
                 clear();
             }
-        } 
-        else if ((consolePanel.getCurrentScreenName() == "MAIN_SCREEN") && cmd == "exit") {
+        } else if ((consolePanel.getCurrentScreenName() == "MAIN_SCREEN") && cmd == "exit") {
             notShuttingDown = false;
             handleExit();
-        }       
+        }
+
+        // The -s and -r commands won't work when not on the main screen
+        else if (cmd == "screen" && args.size() >= 2 && (args[0] == "-s" || args[0] == "-r") && consolePanel.getCurrentScreenName() != "MAIN_SCREEN") {
+            cout << "Cannot create or resume a screen while inside another screen. Type 'exit' to return first.\n\n";
+        }
+
+        // -s command
         else if (cmd == "screen" && args.size() >= 2 && args[0] == "-s") {
             bool exists = false;
             for (auto& consolePtr : screens) {
@@ -110,31 +120,61 @@ int main() {
             consolePanel.setCurrentScreen(newProcessConsole);
             
             displayProcessScreen(newProcess);
-            cout << "Finished!" << "\n\n\n";
-        } 
+            // cout << "Finished!" << "\n\n\n";
+        }
+        
+        // -r command (checking for existing screen)
         else if (cmd == "screen" && args.size() >= 2 && args[0] == "-r") {
-            clearToProcessScreen();
             screenProcessName = args[1];
-            for (auto& consolePtr: screens){
-                if(consolePtr->getConsoleName() == args[1]){
-                    consolePanel.setCurrentScreen(consolePtr);
-                }
-            }
 
-            for (auto& processPtr: processList){
-                if(processPtr->getProcessName() == screenProcessName){
-                    displayProcessScreen(processPtr);
-                    cout << "\n\n";
+            // Check if the screen and process exist first
+            bool screenFound = false;
+            bool processFound = false;
+
+            for (auto& consolePtr : screens) {
+                if (consolePtr->getConsoleName() == screenProcessName) {
+                    screenFound = true;
+                    consolePanel.setCurrentScreen(consolePtr);
                     break;
                 }
             }
+
+            for (auto& processPtr : processList) {
+                if (processPtr->getProcessName() == screenProcessName) {
+                    processFound = true;
+                    break;
+                }
+            }
+
+            if (!screenFound || !processFound) {
+                cout << "No such screen '" << screenProcessName << "' found.\n\n";
+            } else {
+                // Everything is valid — now you can clear and display the screen
+                clearToProcessScreen();
+                for (auto& processPtr : processList) {
+                    if (processPtr->getProcessName() == screenProcessName) {
+                        displayProcessScreen(processPtr);
+                        cout << "\n\n";
+                        break;
+                    }
+                }
+            }
         } 
-        else if ((args.size() >= 2 && ((args[0] == "-s" && !args[1].empty()) || (args[0] == "-r" && !args[1].empty()))) && (consolePanel.getCurrentScreenName() != "MAIN_SCREEN")) {
-            cout << "Command not recognized.\n\n";
-        } else if (cmd == "initialize" && !hasInitialized && consolePanel.getCurrentScreenName() == "MAIN_SCREEN") {
+
+        // else if ((args.size() >= 2 && ((args[0] == "-s" && !args[1].empty()) || (args[0] == "-r" && !args[1].empty()))) && (consolePanel.getCurrentScreenName() != "MAIN_SCREEN")) {
+        //     cout << "Command not recognized.\n\n";
+        // } 
+
+        // initialize command
+        else if (cmd == "initialize" && !hasInitialized && consolePanel.getCurrentScreenName() == "MAIN_SCREEN") {
             initialize();
             hasInitialized = true;
-        } else if (cmd == "scheduler-start" && consolePanel.getCurrentScreenName() == "MAIN_SCREEN") {
+        } else if (cmd == "initialize" && hasInitialized && consolePanel.getCurrentScreenName() == "MAIN_SCREEN") {
+            cout << "System has already been initialized. Proceed with other commands.\n\n";
+        } 
+        
+        // other commands
+        else if (cmd == "scheduler-start" && consolePanel.getCurrentScreenName() == "MAIN_SCREEN") {
             scheduler_start();
         } else if (cmd == "scheduler-stop" && consolePanel.getCurrentScreenName() == "MAIN_SCREEN") {
             scheduler_stop();
@@ -142,11 +182,18 @@ int main() {
             report_util();
         } else if (cmd == "help" && consolePanel.getCurrentScreenName() == "MAIN_SCREEN") {
             printHelpMenu();
-        } else if (cmd == "ls" && consolePanel.getCurrentScreenName() == "MAIN_SCREEN") {
+        } 
+        
+        // list all processes (di pa okay)
+        else if (cmd == "screen" && args.size() >= 1 && args[0] == "-ls" && consolePanel.getCurrentScreenName() == "MAIN_SCREEN") {
             consolePanel.listAvailableScreens();
-        } else if (cmd == "clear" && consolePanel.getCurrentScreenName() == "MAIN_SCREEN"){
+        } 
+        
+        else if (cmd == "clear" && consolePanel.getCurrentScreenName() == "MAIN_SCREEN"){
             clear();
-        } else if (cmd == "process-smi" && consolePanel.getCurrentScreenName() != "MAIN_SCREEN"){
+        } 
+        
+        else if (cmd == "process-smi" && consolePanel.getCurrentScreenName() != "MAIN_SCREEN"){
             screenProcessName = consolePanel.getCurrentScreenName();
             for (auto& processPtr: processList){
                 if(processPtr->getProcessName() == screenProcessName){
@@ -154,22 +201,27 @@ int main() {
                     break;
                 }
             }
-            cout << "Finished!" << "\n\n\n";
+            cout << "Finished!" << "\n\n";
         } 
+        
+        // error command/s
         else {
             cout << "Unknown command! Type \"help\" for commandlist." << "\n\n";
         }
     }
 }
 
-void displayProcessScreen(shared_ptr<Process> newProcess){
-    cout << "==================== SCREEN: " << newProcess->getProcessName() << " ====================\n"; 
+void displayProcessScreen(shared_ptr<Process> newProcess) {
+    cout << "\n=====================================================\n";
+    cout << "                  PROCESS CONSOLE SCREEN             \n";
+    cout << "=====================================================\n";
     cout << "Process name: " << newProcess->getProcessName() << "\n";
     cout << "ID: " << newProcess->getProcessNo() << "\n";
     cout << "Logs: "<< endl;
     cout << "(" << newProcess->getTime() << ") " << "Core:" <<newProcess->getCoreNo() << " \"Hello world from " << newProcess->getProcessName() << "!\""<< "\n\n";
     cout << "Current instruction line: " << newProcess->getCompletedCommands() << "\n";
     cout << "Lines of code: " << newProcess->getTotalNoOfCommands() << "\n";
+    
     cout << "=====================================================\n";
 }
 
@@ -178,18 +230,30 @@ void setColor( unsigned char color ){
 }
 
 void header() {
-	setColor(0x07);
-	cout << "  ____ ____  ____  _____ _____ ____ __   __     "<< endl;
-	cout << " / __/  ___|/ __ `|  _  ` ____/ ___`  ` / /     "<< endl;
-	cout << "| |   `___ ` |  | | |_| |  __|`___ ` `   /      "<< endl;
-	cout << "| |__ ___) | |__| | ___/| |___ ___) | | |       "<< endl;
-	cout << " `___` ____/`____/|_|   |_____|___ /  |_|       "<< endl;
-	setColor(0x02);
-	cout << "Hello, Welcome to CSOPESY commandline!\n";
-	setColor(0x0E);
-	cout << "Type 'exit' to quit, 'clear' to clear the screen\n";
-	setColor(0x07);
+    setColor(0x07);
+    cout << "  ____ ____  ____  _____ _____ ____ __   __     " << endl;
+    cout << " / __/  ___|/ __ `|  _  ` ____/ ___`  ` / /     " << endl;
+    cout << "| |   `___ ` |  | | |_| |  __|`___ ` `   /      " << endl;
+    cout << "| |__ ___) | |__| | ___/| |___ ___) | | |       " << endl;
+    cout << " `___` ____/`____/|_|   |_____|___ /  |_|       " << endl;
+    cout << "--------------------------------------------------\n";
+    setColor(0x02);
+    cout << "Hello, Welcome to CSOPESY commandline!\n\n";
+
+    setColor(0x07);
+    cout << "Developers:\n";
+    cout << "Albarracin, Clarissa\n";
+    cout << "Garcia, Reina Althea\n";
+    cout << "Santos, Miko\n\n";
+
+    cout << "Last updated: 05-20-25\n\n";
+
+    setColor(0x0E);
+    cout << "Type 'exit' to quit, 'clear' to clear the screen\n"; 
+    cout << "--------------------------------------------------\n";
+    setColor(0x07);
 }
+
 
 pair<string, vector<string>> parseCommand(const string& input) {
 	istringstream stream(input);
@@ -230,7 +294,7 @@ void printHelpMenu() {
     cout << "  scheduler-stop    - Stop scheduler\n";
     cout << "  report-util       - Display utilization report\n";
     cout << "  clear             - Clear the screen\n";
-    cout << "  ls                - List all screen processes\n";
+    cout << "  screen -ls        - List all screen processes\n";
     cout << "  help              - Show this help menu\n";
     cout << "  exit              - Exit the program\n\n";
 }

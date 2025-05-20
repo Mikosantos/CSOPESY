@@ -47,17 +47,23 @@ void ConsolePanel::setCurrentScreen(std::shared_ptr<Console> screenPanel){
     ConsolePanel::curPanel = screenPanel;
 }
 
-void ConsolePanel::listAvailableScreens(){
+void ConsolePanel::listAvailableScreens() {
+    std::cout << "Available Screens:\n";
+    std::cout << "------------------\n";
+
     for (const auto& consolePtr : ConsolePanel::consolePanels) {
-        std::cout << "Console Name: " << consolePtr->getConsoleName() << "\n\n";
+        std::cout << consolePtr->getConsoleName() << "\n";
     }
-    std::cout << "Currently Selected Console: ";
-    if (ConsolePanel::curPanel != nullptr) {
-        std::cout << ConsolePanel::curPanel->getConsoleName() << "\n\n";
-    } else {
-        std::cout << "None selected" << "\n\n";
-    }
-}   
+
+    std::cout << "------------------\n\n";
+
+    // std::cout << "\nCurrently Selected Console: ";
+    // if (ConsolePanel::curPanel != nullptr) {
+    //     std::cout << ConsolePanel::curPanel->getConsoleName() << "\n\n";
+    // } else {
+    //     std::cout << "None selected\n\n";
+    // }
+}
 
 void ConsolePanel::addConsolePanel(std::shared_ptr<Console> screenPanel){
     consolePanels.push_back(screenPanel);
