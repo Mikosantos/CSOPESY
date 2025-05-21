@@ -13,6 +13,8 @@
 #include <cstdlib>
 #include <sstream>
 #include <iomanip>
+#include <filesystem>
+#include <chrono>
 
 using namespace std;
 
@@ -196,16 +198,31 @@ void setColor( unsigned char color ){
 	SetConsoleTextAttribute( GetStdHandle( STD_OUTPUT_HANDLE ), color );
 }
 
-std::string getCurrentTime() {
-    const auto cur_time = std::chrono::system_clock::now();
-    const std::time_t t_cur_time = std::chrono::system_clock::to_time_t(cur_time);
+void printLastUpdated() {
+    namespace fs = std::filesystem;
 
-    std::tm local_time;
-    localtime_s(&local_time, &t_cur_time);
+    std::string path = (fs::current_path() / "main.cpp").string();
 
-    std::ostringstream oss;
-    oss << std::put_time(&local_time, "%m/%d/%Y %I:%M:%S %p");
-    return oss.str();
+    //std::cout << "Current path: " << path << "\n";
+
+    try
+    {
+        auto ftime = fs::last_write_time(path);
+
+        auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
+            ftime - fs::file_time_type::clock::now() + std::chrono::system_clock::now()
+        );
+
+        std::time_t cftime = std::chrono::system_clock::to_time_t(sctp);
+
+        std::cout << "Last updated: " 
+                  << std::put_time(std::localtime(&cftime), "%m/%d/%Y %I:%M:%S %p") 
+                  << std::endl;
+    }
+    catch (const fs::filesystem_error& e)
+    {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
 }
 
 void header() {
@@ -225,8 +242,8 @@ void header() {
     cout << "Garcia, Reina Althea\n";
     cout << "Santos, Miko\n\n";
 
-    cout << "Last updated: ";
-    cout << getCurrentTime() + "\n\n";
+    printLastUpdated();
+    cout << "\n\n";
 
     setColor(0x0E);
     cout << "Type 'exit' to quit, 'clear' to clear the screen\n"; 
