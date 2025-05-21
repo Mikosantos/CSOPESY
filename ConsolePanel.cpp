@@ -52,18 +52,16 @@ void ConsolePanel::listAvailableScreens() {
     std::cout << "========== System Summary ============\n";
     std::cout << "CPU Utilization: "    << 100 << "%\n";
     std::cout << "Cores Used: "         << 16 << "\n";
-    std::cout << "Cores available: "    << 0 << "\n\n";
-
-    std::cout << "--------------------------------------\n";
+    std::cout << "Cores available: "    << 0 << "\n";
+    std::cout << "======================================\n";
     std::cout << "Running Processes: \n\n";
     std::cout << "Finished Processes: \n";
-    std::cout << "======================================\n\n";
-
+    std::cout << "======================================\n";
     std::cout << "Available Screens:\n";
-    std::cout << "------------------\n";
 
     for (const auto& consolePtr : ConsolePanel::consolePanels) {
-        std::cout << consolePtr->getConsoleName() << "\n";
+        std::cout << consolePtr->getConsoleName()
+                  << " - Created at: " << consolePtr->getCreationTime() << "\n";
     }
 
     std::cout << "\n";
