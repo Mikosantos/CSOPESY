@@ -12,6 +12,7 @@
 #include <ctime>
 #include <cstdlib>
 #include <sstream>
+#include <iomanip>
 
 using namespace std;
 
@@ -187,12 +188,24 @@ void displayProcessScreen(shared_ptr<Process> newProcess) {
     cout << "Logs: "<< endl;
     cout << "(" << newProcess->getTime() << ") " << "Core:" <<newProcess->getCoreNo() << " \"Hello world from " << newProcess->getProcessName() << "!\""<< "\n\n";
     cout << "Current instruction line: " << newProcess->getCompletedCommands() << "\n";
-    cout << "Lines of code: " << newProcess->getTotalNoOfCommands() << "\n";
+    cout << "Lines of instruction: " << newProcess->getTotalNoOfCommands() << "\n";
     cout << "=====================================================\n";
 }
 
 void setColor( unsigned char color ){
 	SetConsoleTextAttribute( GetStdHandle( STD_OUTPUT_HANDLE ), color );
+}
+
+std::string getCurrentTime() {
+    const auto cur_time = std::chrono::system_clock::now();
+    const std::time_t t_cur_time = std::chrono::system_clock::to_time_t(cur_time);
+
+    std::tm local_time;
+    localtime_s(&local_time, &t_cur_time);
+
+    std::ostringstream oss;
+    oss << std::put_time(&local_time, "%m/%d/%Y %I:%M:%S %p");
+    return oss.str();
 }
 
 void header() {
@@ -212,7 +225,8 @@ void header() {
     cout << "Garcia, Reina Althea\n";
     cout << "Santos, Miko\n\n";
 
-    cout << "Last updated: 05-20-25\n\n";
+    cout << "Last updated: ";
+    cout << getCurrentTime() + "\n\n";
 
     setColor(0x0E);
     cout << "Type 'exit' to quit, 'clear' to clear the screen\n"; 

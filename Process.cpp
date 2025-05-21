@@ -11,7 +11,7 @@ Process::Process(std::string& pName, int totalCom)
 : processName(pName), totalNoOfCommands(totalCom) {
     time = std::chrono::system_clock::now();
     setCompletedCommands(0);
-    setCoreNum(-1);
+    setCoreNum(0);
     setProcessNum(NextProcessNum++);
 };
 
@@ -26,7 +26,7 @@ std::string Process::getTime(){
     std::tm local_time;
     localtime_s(&local_time, &now);
     std::ostringstream oss;
-    oss << std::put_time(&local_time, "%m/%d/%Y %I:%M:%S%p");
+    oss << std::put_time(&local_time, "%m/%d/%Y %I:%M:%S %p");
     return oss.str();
 }
 std::string Process::getProcessName(){
