@@ -6,6 +6,7 @@
 #include <string>
 #include <conio.h>
 #include <random>
+#include <iomanip>
 
 std::shared_ptr<Console> ConsolePanel::curPanel = nullptr;
 std::vector<std::shared_ptr<Console>> ConsolePanel::consolePanels;
@@ -47,31 +48,26 @@ void ConsolePanel::setCurrentScreen(std::shared_ptr<Console> screenPanel){
     ConsolePanel::curPanel = screenPanel;
 }
 
-void ConsolePanel::listAvailableScreens() {
-
+void ConsolePanel::listProcesses(const std::vector<std::shared_ptr<Process>>& processes) {
     std::cout << "========== System Summary ============\n";
     std::cout << "CPU Utilization: "    << 100 << "%\n";
     std::cout << "Cores Used: "         << 16 << "\n";
     std::cout << "Cores available: "    << 0 << "\n";
     std::cout << "======================================\n";
-    std::cout << "Running Processes: \n\n";
-    std::cout << "Finished Processes: \n";
-    std::cout << "======================================\n";
-    std::cout << "Available Screens:\n";
+    std::cout << "Running Processes: \n";
 
-    for (const auto& consolePtr : ConsolePanel::consolePanels) {
-        std::cout << consolePtr->getConsoleName()
-                  << " - Created at: " << consolePtr->getCreationTime() << "\n";
+    for (const auto& proc : processes) {
+        if (proc->getProcessName() == "MAIN_SCREEN") continue;
+
+        std::cout << std::left << std::setw(15) << proc->getProcessName()
+                  << " (" << proc->getTime() << ")   "
+                  << "Core:" << proc->getCoreNo() << "   "
+                  << proc->getCompletedCommands() << "/" << proc->getTotalNoOfCommands()
+                  << "\n";
     }
 
-    std::cout << "\n";
-
-    // std::cout << "\nCurrently Selected Console: ";
-    // if (ConsolePanel::curPanel != nullptr) {
-    //     std::cout << ConsolePanel::curPanel->getConsoleName() << "\n\n";
-    // } else {
-    //     std::cout << "None selected\n\n";
-    // }
+    std::cout << "\nFinished Processes: \n";
+    std::cout << "======================================\n";
 }
 
 void ConsolePanel::addConsolePanel(std::shared_ptr<Console> screenPanel){

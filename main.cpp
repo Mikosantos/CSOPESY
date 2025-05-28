@@ -92,7 +92,7 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
     } else if (cmd == "report-util") {
         report_util();
     } else if (cmd == "screen" && args.size() >= 1 && args[0] == "-ls") {
-        consolePanel.listAvailableScreens();
+        consolePanel.listProcesses(processList);
     } else if (cmd == "screen" && args.size() >= 2 && args[0] == "-s") {
         string procName = args[1];
 
