@@ -5,6 +5,10 @@
 #include <iostream>
 #include <iomanip>
 
+#define ORANGE "\033[38;5;208m"
+#define BLUE   "\033[34m"
+#define RESET  "\033[0m"
+
 int Process::NextProcessNum = 1;
 
 Process::Process(std::string& pName, int totalCom)
@@ -21,14 +25,47 @@ void Process::displayScreen(){
 }
 
 //getters
-std::string Process::getTime(){
+std::string Process::getTime() {
     auto now = std::chrono::system_clock::to_time_t(time);
     std::tm local_time;
     localtime_s(&local_time, &now);
+
     std::ostringstream oss;
-    oss << std::put_time(&local_time, "%m/%d/%Y %I:%M:%S %p");
+
+    // Format: (MM/DD/YYYY HH:MM:SS PM)
+    oss << BLUE << "(" << RESET;
+    oss << ORANGE << std::setw(2) << std::setfill('0') << local_time.tm_mon + 1 << RESET;
+    oss << BLUE << "/" << RESET;
+    oss << ORANGE << std::setw(2) << std::setfill('0') << local_time.tm_mday << RESET;
+    oss << BLUE << "/" << RESET;
+    oss << ORANGE << (local_time.tm_year + 1900) << RESET;
+
+    // Space
+    oss << " ";
+
+    // Hour
+    int hour = local_time.tm_hour;
+    std::string am_pm = "AM";
+    if (hour >= 12) {
+        am_pm = "PM";
+        if (hour > 12) hour -= 12;
+    }
+    if (hour == 0) hour = 12;
+    oss << ORANGE << std::setw(2) << std::setfill('0') << hour << RESET;
+
+    oss << BLUE << ":" << RESET;
+    oss << ORANGE << std::setw(2) << std::setfill('0') << local_time.tm_min << RESET;
+    oss << BLUE << ":" << RESET;
+    oss << ORANGE << std::setw(2) << std::setfill('0') << local_time.tm_sec << RESET;
+
+    // Space and AM/PM
+    oss << " " << ORANGE << am_pm;
+
+    oss << BLUE << ")" << RESET;
+
     return oss.str();
 }
+
 std::string Process::getProcessName(){
     return this->processName;
 }

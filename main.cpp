@@ -16,6 +16,9 @@
 #include <filesystem>
 #include <chrono>
 
+#define ORANGE "\033[38;5;208m"
+#define RESET  "\033[0m"
+
 using namespace std;
 
 void handleMainScreenCommands(const string& cmd, const vector<string>& args, ConsolePanel& consolePanel, vector<shared_ptr<Process>>& processList, 
@@ -188,11 +191,11 @@ void displayProcessScreen(shared_ptr<Process> newProcess) {
     cout << "                  PROCESS CONSOLE SCREEN             \n";
     cout << "=====================================================\n";
     cout << "Process name: " << newProcess->getProcessName() << "\n";
-    cout << "ID: " << newProcess->getProcessNo() << "\n";
+    cout << "ID: " << ORANGE << newProcess->getProcessNo() << RESET << "\n";
     cout << "Logs: "<< endl;
-    cout << "(" << newProcess->getTime() << ") " << "Core:" <<newProcess->getCoreNo() << " \"Hello world from " << newProcess->getProcessName() << "!\""<< "\n\n";
-    cout << "Current instruction line: " << newProcess->getCompletedCommands() << "\n";
-    cout << "Lines of instruction: " << newProcess->getTotalNoOfCommands() << "\n";
+    cout << newProcess->getTime() << " Core: " << ORANGE << newProcess->getCoreNo() << RESET << " \"Hello world from " << newProcess->getProcessName() << "!\""<< "\n\n";
+    cout << "Current instruction line: " << ORANGE << newProcess->getCompletedCommands() << RESET << "\n";
+    cout << "Lines of instruction: "     << ORANGE << newProcess->getTotalNoOfCommands() << RESET << "\n";
     cout << "=====================================================\n";
 }
 
