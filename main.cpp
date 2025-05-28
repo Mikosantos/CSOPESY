@@ -158,7 +158,7 @@ void handleProcessScreenCommands(const string& cmd, const string& currentScreenN
     auto screens = consolePanel.getConsolePanels();
     
     if (cmd == "exit") {
-        system("cls");
+        cout << "\033c" << flush;
         for (auto& screenPtr : screens) {
                 if (screenPtr->getConsoleName() == "MAIN_SCREEN") {
                     consolePanel.setCurrentScreen(screenPtr);
@@ -300,10 +300,10 @@ void handleExit() {
 }
 
 void clear() {
-	system("cls"); 
+	cout << "\033c" << flush;
 	header();
 }
 
 void clearToProcessScreen() {
-	system("cls"); 
+	cout << "\033c" << flush;
 }
