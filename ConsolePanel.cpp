@@ -49,11 +49,6 @@ void ConsolePanel::setCurrentScreen(std::shared_ptr<Console> screenPanel){
 }
 
 void ConsolePanel::listProcesses(const std::vector<std::shared_ptr<Process>>& processes) {
-    std::cout << "========== System Summary ============\n";
-    std::cout << "CPU Utilization: "    << 100 << "%\n";
-    std::cout << "Cores Used: "         << 16 << "\n";
-    std::cout << "Cores available: "    << 0 << "\n";
-    std::cout << "======================================\n";
     std::cout << "Running Processes: \n";
 
     for (const auto& proc : processes) {

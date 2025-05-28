@@ -12,8 +12,6 @@ class Console {
         
     public: 
         Console(std::string consoleName, int curLine, int totalLines, int processId);
-        std::string getTimestamp();
-        std::string getCreationTime() const; //new
         std::string getConsoleName() const;
         int getCurrentLine() const;
         int getTotalLines() const;

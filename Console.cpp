@@ -5,24 +5,6 @@
 
 Console::Console(std:: string cName, int cLine, int tLines, int pId) :
     consoleName(cName), curLine(cLine), totalLines(tLines), processId(pId) {
-        curTime = getTimestamp();
-}
-
-std::string Console::getTimestamp() {
-	time_t timestamp;
-	tm * tm_stamp;
-	char ts_string[100];
-	std::string strTimeStamp;	
-	time(&timestamp);
-	tm_stamp = localtime(&timestamp);
-			
-	std::strftime(ts_string, 100, "%m/%d/%Y, %I:%M:%S %p", tm_stamp);
-	strTimeStamp = ts_string;
-    return strTimeStamp;
-}
-
-std::string Console::getCreationTime() const {
-    return curTime;
 }
 
 std::string Console::getConsoleName() const { 

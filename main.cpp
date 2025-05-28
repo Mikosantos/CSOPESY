@@ -28,6 +28,7 @@ void initialize();
 void scheduler_start();
 void scheduler_stop();
 void report_util();
+void printSystemSummary();
 void printHelpMenu();
 void handleExit();
 void clear();
@@ -92,6 +93,7 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
     } else if (cmd == "report-util") {
         report_util();
     } else if (cmd == "screen" && args.size() >= 1 && args[0] == "-ls") {
+        printSystemSummary();
         consolePanel.listProcesses(processList);
     } else if (cmd == "screen" && args.size() >= 2 && args[0] == "-s") {
         string procName = args[1];
@@ -280,6 +282,14 @@ void scheduler_stop() {
 
 void report_util() {
 	cout << "'report-util' command recognized. Doing something.\n\n";
+}
+
+void printSystemSummary() {
+    cout << "========== System Summary ============\n";
+    cout << "CPU Utilization: "    << 100 << "%\n";
+    cout << "Cores Used: "         << 16 << "\n";
+    cout << "Cores available: "    << 0 << "\n";
+    cout << "======================================\n";
 }
 
 void printHelpMenu() {
