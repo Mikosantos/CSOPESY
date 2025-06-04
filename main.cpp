@@ -2,6 +2,7 @@
 #include "Console.h"
 #include "ConsolePanel.h"
 #include "Process.h"
+#include "Scheduler.h"
 
 /* Libraries */
 #include <string>
@@ -38,6 +39,8 @@ void clear();
 void clearToProcessScreen();
 void displayProcessScreen(shared_ptr<Process> nProcess);
 
+Scheduler scheduler(4);
+
 int main() {
     srand(static_cast<unsigned>(time(nullptr)));
 
@@ -46,6 +49,9 @@ int main() {
     bool notShuttingDown = true;
     bool hasInitialized = false;
     vector<shared_ptr<Process>> processList;
+
+    // Create and start the scheduler (4 cores)
+    scheduler.start();
 
     header();
 
@@ -77,6 +83,7 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
 
     if (cmd == "exit") {
         notShuttingDown = false;
+        scheduler.stop();
         handleExit();
     } else if (cmd == "initialize") {
         if (hasInitialized) {
@@ -115,6 +122,8 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
         clearToProcessScreen();
         auto newProc = make_shared<Process>(procName, cmds);
         processList.push_back(newProc);
+
+        scheduler.addProcess(newProc);
 
         auto procConsole = make_shared<Console>(procName, curr, total, newProc->getProcessNo());
         consolePanel.addConsolePanel(procConsole);
@@ -309,6 +318,7 @@ void printHelpMenu() {
 }
 
 void handleExit() {
+    
     exit(0);
 }
 
