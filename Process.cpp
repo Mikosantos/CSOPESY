@@ -17,6 +17,7 @@ Process::Process(std::string& pName, int totalCom)
     setCompletedCommands(0);
     setCoreNum(0);
     setProcessNum(NextProcessNum++);
+    setFinished(false);
 };
 
 //TODO
@@ -85,6 +86,10 @@ int Process::getNextProcessNum(){
     return NextProcessNum;
 }
 
+bool Process::isFinished() {
+    return finished;
+}
+
 //setters
 void Process::setProcessName(const std::string& name){
     processName = name;
@@ -100,4 +105,8 @@ void Process::setCoreNum(int cNum){
 }
 void Process::setProcessNum(int procNum){
     processNum = procNum;
+}
+
+void Process::setFinished(bool fin) {
+    finished = fin;
 }
