@@ -50,9 +50,6 @@ int main() {
     bool hasInitialized = false;
     vector<shared_ptr<Process>> processList;
 
-    // Create and start the scheduler (4 cores)
-    scheduler.start();
-
     header();
 
     while (notShuttingDown) {
@@ -91,6 +88,9 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
         } else {
             initialize();
             hasInitialized = true;
+
+            // Create and start the scheduler (4 cores)
+            scheduler.start();
         }
     } else if (cmd == "clear") {
         clear();
@@ -284,10 +284,12 @@ void initialize() {
 	cout << "'initialize' command recognized. Doing something.\n\n";
 }
 
+// creates X number of processes with random instruction lines
 void scheduler_start() {
 	cout << "'scheduler-start' command recognized. Doing something.\n\n";
 }
 
+// stops generating dummy processes
 void scheduler_stop() {
 	cout << "'scheduler-stop' command recognized. Doing something.\n\n";
 }
