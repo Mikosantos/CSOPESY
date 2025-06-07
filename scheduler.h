@@ -11,12 +11,24 @@
 
 class Scheduler {
 private:
+    struct CPUCore {
+        std::thread thread;
+        std::mutex lock;
+        std::condition_variable cv;
+        std::shared_ptr<Process> assignedProcess = nullptr;
+        bool busy = false;
+
+        CPUCore() = default;
+        ~CPUCore() = default;
+    };
+
+    std::vector<std::unique_ptr<CPUCore>> cores;
     std::queue<std::shared_ptr<Process>> readyQueue;
-    std::vector<std::thread> cpuCores;
     std::mutex queueMutex;
-    std::condition_variable cv;
-    std::atomic<bool> running;
+    std::atomic<bool> running = false;
     int coreCount;
+
+    std::thread schedulerThread;
 
 public:
     Scheduler(int cores = 4);
@@ -25,5 +37,8 @@ public:
     void start();
     void stop();
     void addProcess(const std::shared_ptr<Process>& proc);
-    void runCore(int coreId);
+
+private:
+    void schedulerLoop();
+    void coreWorker(int coreId);
 };
