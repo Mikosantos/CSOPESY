@@ -81,8 +81,8 @@ void ConsolePanel::listProcesses(const std::vector<std::shared_ptr<Process>>& pr
 
         if(proc->isFinished()) {
             std::cout << std::left << std::setw(15) << proc->getProcessName()
-                  << proc->getTime() << "   "
-                  << "Finished!"<< ORANGE << proc->getCoreNo()  << RESET << "   "
+                  << proc->getTime()                            << "   "
+                  << "Finished!"                                << RESET << "   "
                   << ORANGE     << proc->getCompletedCommands() << RESET << BLUE << " / " << RESET
                   << ORANGE     << proc->getTotalNoOfCommands() << RESET
                   << "\n";
