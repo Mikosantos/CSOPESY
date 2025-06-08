@@ -2,6 +2,10 @@
 #include <iostream>
 #include <chrono>
 #include <fstream>
+#include <iomanip>
+#include <time.h>
+#include <thread>
+#include <sstream>
 
 Scheduler::Scheduler(int cores, int delay)
     : coreCount(cores), delayPerExec(delay) {}
@@ -93,14 +97,42 @@ void Scheduler::coreWorker(int coreId) {
         auto proc = core->assignedProcess;
         lock.unlock();
 
+        // write to file
         while (proc->getCompletedCommands() < proc->getTotalNoOfCommands()) {
-            // Simulate instruction execution
             std::ofstream file(proc->getProcessName() + ".txt", std::ios::app);
-            file << " Core: " << coreId
-                 << "  \"Hello world from " << proc->getProcessName() << "!\"" << std::endl;
+
+            // Generate current time (per instruction)
+            auto now = std::chrono::system_clock::now();
+            std::time_t now_c = std::chrono::system_clock::to_time_t(now);
+            std::tm local_time;
+            localtime_s(&local_time, &now_c);
+
+            std::ostringstream timestamp;
+            timestamp << "("
+                    << std::setw(2) << std::setfill('0') << local_time.tm_mon + 1 << "/"
+                    << std::setw(2) << std::setfill('0') << local_time.tm_mday << "/"
+                    << (local_time.tm_year + 1900) << " ";
+
+            int hour = local_time.tm_hour;
+            std::string ampm = "AM";
+            if (hour >= 12) {
+                ampm = "PM";
+                if (hour > 12) hour -= 12;
+            }
+            if (hour == 0) hour = 12;
+
+            timestamp << std::setw(2) << std::setfill('0') << hour << ":"
+                      << std::setw(2) << std::setfill('0') << local_time.tm_min << ":"
+                      << std::setw(2) << std::setfill('0') << local_time.tm_sec << " "
+                      << ampm << ")";
+
+            // Write full line with real-time timestamp
+            file << timestamp.str()
+                << " Core: " << coreId
+                << "  \"Hello world from " << proc->getProcessName() << "!\"" << std::endl;
 
             proc->setCompletedCommands(proc->getCompletedCommands() + 1);
-            std::this_thread::sleep_for(std::chrono::milliseconds(delayPerExec));  // <-- Uses config value
+            std::this_thread::sleep_for(std::chrono::milliseconds(delayPerExec));
         }
 
         proc->setFinished(true);

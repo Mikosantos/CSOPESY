@@ -84,7 +84,9 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
         notShuttingDown = false;
         scheduler->stop();
         handleExit();
-    } else if (cmd == "initialize") {
+    } 
+    
+    else if (cmd == "initialize") {
         if (hasInitialized) {
             cout << "System has already been initialized.\n\n";
         } else {
@@ -92,20 +94,34 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
             initialize();
 
         }
-    } else if (cmd == "clear") {
+    } 
+    
+    else if (cmd == "clear") {
         clear();
-    } else if (cmd == "help") {
+    } 
+    
+    else if (cmd == "help") {
         printHelpMenu();
-    } else if (cmd == "scheduler-start") {
+    } 
+    
+    else if (cmd == "scheduler-start") {
         scheduler_start();
-    } else if (cmd == "scheduler-stop") {
+    } 
+    
+    else if (cmd == "scheduler-stop") {
         scheduler_stop();
-    } else if (cmd == "report-util") {
+    } 
+    
+    else if (cmd == "report-util") {
         report_util();
-    } else if (cmd == "screen" && args.size() >= 1 && args[0] == "-ls") {
+    } 
+    
+    else if (cmd == "screen" && args.size() >= 1 && args[0] == "-ls") {
         printSystemSummary();
         consolePanel.listProcesses(processList);
-    } else if (cmd == "screen" && args.size() >= 2 && args[0] == "-s") {
+    } 
+    
+    else if (cmd == "screen" && args.size() >= 2 && args[0] == "-s") {
         string procName = args[1];
 
         for (const auto& c : screens) {
@@ -117,10 +133,12 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
 
         int curr = 1 + rand() % 100;
         int total = config.minInstructions + rand() % (config.maxInstructions - config.minInstructions + 1);
+        
+        // what's the difference between total and cmds?
         int cmds = total + rand() % 100;
 
         clearToProcessScreen();
-        auto newProc = make_shared<Process>(procName, cmds);
+        auto newProc = make_shared<Process>(procName, total);
         processList.push_back(newProc);
 
         scheduler->addProcess(newProc);
@@ -132,9 +150,12 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
 
         displayProcessScreen(newProc);
 
-    } else if (cmd == "screen" && args.size() >= 2 && args[0] == "-r") {
+    } 
+    
+    else if (cmd == "screen" && args.size() >= 2 && args[0] == "-r") {
         string procName = args[1];
         bool foundScreen = false, foundProcess = false;
+        std::shared_ptr<Process> targetProcess = nullptr;
 
         for (auto& s : screens) {
             if (s->getConsoleName() == procName) {
@@ -147,24 +168,22 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
         for (auto& p : processList) {
             if (p->getProcessName() == procName) {
                 foundProcess = true;
+                targetProcess = p;
                 break;
             }
         }
 
-        if (!foundScreen || !foundProcess) {
-            cout << "No such screen '" << procName << "' found.\n\n";
+        if (!foundScreen || !foundProcess || targetProcess->isFinished()) {
+            cout << "Process '" << procName << "' not found.\n\n";
             return;
         }
 
         clearToProcessScreen();
-        for (auto& p : processList) {
-            if (p->getProcessName() == procName) {
-                displayProcessScreen(p);
-                // cout << "\n\n";
-                break;
-            }
-        }
-    } else {
+        displayProcessScreen(targetProcess);
+
+    } 
+    
+    else {
         cout << "Unknown command! Type \"help\" for commandlist.\n\n";
     }
 }
@@ -183,7 +202,9 @@ void handleProcessScreenCommands(const string& cmd, const string& currentScreenN
             if (consolePanel.getCurrentScreenName() == "MAIN_SCREEN") {
                 clear();
             }
-    } else if (cmd == "process-smi") {
+    } 
+    
+    else if (cmd == "process-smi") {
         for (auto& p : processList) {
             if (p->getProcessName() == currentScreenName) {
                 displayProcessScreen(p);
@@ -191,7 +212,9 @@ void handleProcessScreenCommands(const string& cmd, const string& currentScreenN
             }
         }
         // cout << "Finished!\n\n";
-    } else {
+    } 
+    
+    else {
         cout << "Only 'exit' and 'process-smi' commands are allowed inside a process screen.\n\n";
     }
 }
@@ -287,13 +310,13 @@ void initialize() {
     std::cout << ORANGE << "[Initializing System...]\n" << RESET;
 
     std::cout << "Loaded configuration:\n";
-    std::cout << "  Scheduler type     : " << ORANGE << config.schedulerType << RESET << "\n";
-    std::cout << "  Number of CPUs     : " << ORANGE << config.numCPUs << RESET << "\n";
-    std::cout << "  Quantum cycles     : " << ORANGE << config.quantumCycles << RESET << "\n";
+    std::cout << "  Scheduler type     : " << ORANGE << config.schedulerType    << RESET << "\n";
+    std::cout << "  Number of CPUs     : " << ORANGE << config.numCPUs          << RESET << "\n";
+    std::cout << "  Quantum cycles     : " << ORANGE << config.quantumCycles    << RESET << "\n";
     std::cout << "  Batch process freq : " << ORANGE << config.batchProcessFreq << RESET << "\n";
-    std::cout << "  Min instructions   : " << ORANGE << config.minInstructions << RESET << "\n";
-    std::cout << "  Max instructions   : " << ORANGE << config.maxInstructions << RESET << "\n";
-    std::cout << "  Delay per exec     : " << ORANGE << config.delaysPerExec << " ms" << RESET << "\n";
+    std::cout << "  Min instructions   : " << ORANGE << config.minInstructions  << RESET << "\n";
+    std::cout << "  Max instructions   : " << ORANGE << config.maxInstructions  << RESET << "\n";
+    std::cout << "  Delay per exec     : " << ORANGE << config.delaysPerExec    << RESET << "\n";
 
     std::cout << "\nStarting scheduler...\n";
 
