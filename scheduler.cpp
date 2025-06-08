@@ -3,7 +3,8 @@
 #include <chrono>
 #include <fstream>
 
-Scheduler::Scheduler(int cores) : coreCount(cores) {}
+Scheduler::Scheduler(int cores, int delay)
+    : coreCount(cores), delayPerExec(delay) {}
 
 Scheduler::~Scheduler() {
     stop();
@@ -12,29 +13,24 @@ Scheduler::~Scheduler() {
 void Scheduler::start() {
     running = true;
 
-    // Create and start each core
     for (int i = 0; i < coreCount; ++i) {
         auto core = std::make_unique<CPUCore>();
         core->thread = std::thread(&Scheduler::coreWorker, this, i);
         cores.push_back(std::move(core));
     }
 
-    // Start scheduler dispatcher
     schedulerThread = std::thread(&Scheduler::schedulerLoop, this);
 }
 
 void Scheduler::stop() {
     running = false;
 
-    // Wake all CPU cores
     for (auto& core : cores) {
         core->cv.notify_all();
     }
 
-    // Join scheduler thread
     if (schedulerThread.joinable()) schedulerThread.join();
 
-    // Join core threads
     for (auto& core : cores) {
         if (core->thread.joinable()) {
             core->thread.join();
@@ -67,13 +63,13 @@ void Scheduler::schedulerLoop() {
                 if (!core->busy && core->assignedProcess == nullptr) {
                     {
                         std::lock_guard<std::mutex> qLock(queueMutex);
-                        readyQueue.pop(); // Remove from queue
+                        readyQueue.pop();
                     }
 
                     core->assignedProcess = nextProc;
                     core->busy = true;
                     nextProc->setCoreNum(i);
-                    core->cv.notify_one(); // Wake core thread
+                    core->cv.notify_one();
                     break;
                 }
             }
@@ -98,25 +94,17 @@ void Scheduler::coreWorker(int coreId) {
         lock.unlock();
 
         while (proc->getCompletedCommands() < proc->getTotalNoOfCommands()) {
-            // Open file in append mode
+            // Simulate instruction execution
             std::ofstream file(proc->getProcessName() + ".txt", std::ios::app);
-
-            // Write timestamp, core, and message
             file << " Core: " << coreId
                  << "  \"Hello world from " << proc->getProcessName() << "!\"" << std::endl;
 
-            // Advance instruction counter
             proc->setCompletedCommands(proc->getCompletedCommands() + 1);
-
-            // cycle delay to simulate process execution
-            // way of simulating "1 instruction takes 100 ms"
-            std::this_thread::sleep_for(std::chrono::milliseconds(100)); // simulate execution
+            std::this_thread::sleep_for(std::chrono::milliseconds(delayPerExec));  // <-- Uses config value
         }
-
 
         proc->setFinished(true);
 
-        // Clear assignment and mark as idle
         lock.lock();
         core->assignedProcess = nullptr;
         core->busy = false;

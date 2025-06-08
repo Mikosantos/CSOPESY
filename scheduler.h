@@ -27,11 +27,12 @@ private:
     std::mutex queueMutex;
     std::atomic<bool> running = false;
     int coreCount;
+    int delayPerExec;  // <-- Added: delay per instruction
 
     std::thread schedulerThread;
 
 public:
-    Scheduler(int cores = 4);
+    Scheduler(int cores = 4, int delay = 100);  // <-- Updated constructor
     ~Scheduler();
 
     void start();

@@ -3,6 +3,7 @@
 #include "ConsolePanel.h"
 #include "Process.h"
 #include "Scheduler.h"
+#include "Config.h"
 
 /* Libraries */
 #include <string>
@@ -39,7 +40,8 @@ void clear();
 void clearToProcessScreen();
 void displayProcessScreen(shared_ptr<Process> nProcess);
 
-Scheduler scheduler(4);
+std::unique_ptr<Scheduler> scheduler;
+Config config;
 
 int main() {
     srand(static_cast<unsigned>(time(nullptr)));
@@ -80,17 +82,15 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
 
     if (cmd == "exit") {
         notShuttingDown = false;
-        scheduler.stop();
+        scheduler->stop();
         handleExit();
     } else if (cmd == "initialize") {
         if (hasInitialized) {
             cout << "System has already been initialized.\n\n";
         } else {
-            initialize();
             hasInitialized = true;
+            initialize();
 
-            // Create and start the scheduler (4 cores)
-            scheduler.start();
         }
     } else if (cmd == "clear") {
         clear();
@@ -116,15 +116,16 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
         }
 
         int curr = 1 + rand() % 100;
-        int total = curr + rand() % 100;
+        int total = config.minInstructions + rand() % (config.maxInstructions - config.minInstructions + 1);
         int cmds = total + rand() % 100;
 
         clearToProcessScreen();
         auto newProc = make_shared<Process>(procName, cmds);
         processList.push_back(newProc);
 
-        scheduler.addProcess(newProc);
+        scheduler->addProcess(newProc);
 
+        // di ko pa gets
         auto procConsole = make_shared<Console>(procName, curr, total, newProc->getProcessNo());
         consolePanel.addConsolePanel(procConsole);
         consolePanel.setCurrentScreen(procConsole);
@@ -281,8 +282,34 @@ pair<string, vector<string>> parseCommand(const string& input) {
 }
 
 void initialize() {
-	cout << "'initialize' command recognized. Doing something.\n\n";
+    config = loadConfig("config.txt");
+
+    std::cout << ORANGE << "[Initializing System...]\n" << RESET;
+
+    std::cout << "Loaded configuration:\n";
+    std::cout << "  Scheduler type     : " << ORANGE << config.schedulerType << RESET << "\n";
+    std::cout << "  Number of CPUs     : " << ORANGE << config.numCPUs << RESET << "\n";
+    std::cout << "  Quantum cycles     : " << ORANGE << config.quantumCycles << RESET << "\n";
+    std::cout << "  Batch process freq : " << ORANGE << config.batchProcessFreq << RESET << "\n";
+    std::cout << "  Min instructions   : " << ORANGE << config.minInstructions << RESET << "\n";
+    std::cout << "  Max instructions   : " << ORANGE << config.maxInstructions << RESET << "\n";
+    std::cout << "  Delay per exec     : " << ORANGE << config.delaysPerExec << " ms" << RESET << "\n";
+
+    std::cout << "\nStarting scheduler...\n";
+
+    if (config.schedulerType == "fcfs") {
+        scheduler = std::make_unique<Scheduler>(config.numCPUs, config.delaysPerExec);
+        scheduler->start();
+        std::cout << ORANGE << "[FCFS Scheduler started with "
+                  << config.numCPUs << " cores]" << RESET << "\n\n";
+    } else if (config.schedulerType == "rr") {
+        std::cout << "Round Robin scheduler is not yet implemented.\n\n";
+    } else {
+        std::cout << "Invalid scheduler type in config file.\n\n";
+        return;
+    }
 }
+
 
 // creates X number of processes with random instruction lines
 void scheduler_start() {
