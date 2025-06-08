@@ -14,27 +14,37 @@ Scheduler::~Scheduler() {
     stop();
 }
 
+// in threading, joining a thread (.join) means waiting for it to finish execution before proceeding.
+
+// Starts the scheduler and creates threads for each CPU core
+// 1 thread per CPU core and 1 thread for the scheduler itself
 void Scheduler::start() {
     running = true;
 
+    // Create and start one thread per CPU core
     for (int i = 0; i < coreCount; ++i) {
         auto core = std::make_unique<CPUCore>();
         core->thread = std::thread(&Scheduler::coreWorker, this, i);
         cores.push_back(std::move(core));
     }
 
+    // Start the scheduler thread
     schedulerThread = std::thread(&Scheduler::schedulerLoop, this);
 }
 
+// Stops the scheduler and joins all threads
 void Scheduler::stop() {
     running = false;
 
+    // Wake all threads in case they're waiting
     for (auto& core : cores) {
         core->cv.notify_all();
     }
 
+    // Wait for the scheduler thread to finish
     if (schedulerThread.joinable()) schedulerThread.join();
 
+    // Wait for all core threads to finish
     for (auto& core : cores) {
         if (core->thread.joinable()) {
             core->thread.join();
@@ -42,6 +52,7 @@ void Scheduler::stop() {
     }
 }
 
+// Adds a process to the ready queue
 void Scheduler::addProcess(const std::shared_ptr<Process>& proc) {
     {
         std::lock_guard<std::mutex> lock(queueMutex);
@@ -49,6 +60,7 @@ void Scheduler::addProcess(const std::shared_ptr<Process>& proc) {
     }
 }
 
+// Main scheduler loop that checks for ready processes and assigns them to cores
 void Scheduler::schedulerLoop() {
     while (running) {
         std::shared_ptr<Process> nextProc = nullptr;
@@ -83,6 +95,7 @@ void Scheduler::schedulerLoop() {
     }
 }
 
+// responsible for executing the process on a specific core
 void Scheduler::coreWorker(int coreId) {
     auto& core = cores[coreId];
 

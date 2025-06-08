@@ -25,6 +25,7 @@ private:
     std::vector<std::unique_ptr<CPUCore>> cores;
     std::queue<std::shared_ptr<Process>> readyQueue;
     std::mutex queueMutex;
+
     std::atomic<bool> running = false;
     int coreCount;
     int delayPerExec;  // <-- Added: delay per instruction
@@ -32,7 +33,7 @@ private:
     std::thread schedulerThread;
 
 public:
-    Scheduler(int cores = 4, int delay = 100);  // <-- Updated constructor
+    Scheduler(int cores = 4, int delay = 100);
     ~Scheduler();
 
     void start();
