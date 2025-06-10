@@ -40,12 +40,15 @@ private:
 
     // Number of CPU cores available for scheduling; this is set during initialization and determines how many threads will be created
     int coreCount;
-
-
     int delayPerExec;
 
     // Thread that runs the scheduler loop; this thread is responsible for checking the ready queue and assigning processes to cores
     std::thread schedulerThread;
+
+    //CPU TICKS
+    std::atomic<int> cpuTicks = 0;
+    std::thread tickThread;
+
 
 public:
     Scheduler(int cores = 4, int delay = 100);

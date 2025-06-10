@@ -31,6 +31,15 @@ void Scheduler::start() {
 
     // Start the scheduler thread
     schedulerThread = std::thread(&Scheduler::schedulerLoop, this);
+
+    // Start the CPU tick thread to simulate CPU ticks
+    tickThread = std::thread([this]() {
+        while (running) {
+            cpuTicks++;
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    });
+
 }
 
 // Stops the scheduler and joins all threads
@@ -51,6 +60,9 @@ void Scheduler::stop() {
             core->thread.join();
         }
     }
+
+    // Wait for the CPU tick thread to finish
+    if (tickThread.joinable()) tickThread.join();
 }
 
 // Adds a process to the ready queue
@@ -69,30 +81,35 @@ void Scheduler::schedulerLoop() {
         {
             std::lock_guard<std::mutex> lock(queueMutex);
             if (!readyQueue.empty()) {
+                // Only check the front, don't pop yet
                 nextProc = readyQueue.front();
             }
         }
 
         if (nextProc) {
+            bool assigned = false;
             for (int i = 0; i < coreCount; ++i) {
                 auto& core = cores[i];
                 std::unique_lock<std::mutex> lock(core->lock);
-                if (!core->busy && core->assignedProcess == nullptr) {
+                if (!core->busy && core->assignedProcess == nullptr || core->assignedProcess->isFinished()) {
                     {
                         std::lock_guard<std::mutex> qLock(queueMutex);
-                        readyQueue.pop();
+                        readyQueue.pop();  // Now we remove it from queue
                     }
 
                     core->assignedProcess = nextProc;
                     core->busy = true;
                     nextProc->setCoreNum(i);
                     core->cv.notify_one();
+                    assigned = true;
                     break;
                 }
             }
+
+            // 💡 If no core was available, just leave it in the queue for next loop
         }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 }
 
@@ -146,7 +163,12 @@ void Scheduler::coreWorker(int coreId) {
                 << "  \"Hello world from " << proc->getProcessName() << "!\"" << std::endl;
 
             proc->setCompletedCommands(proc->getCompletedCommands() + 1);
-            std::this_thread::sleep_for(std::chrono::milliseconds(delayPerExec));
+            // std::this_thread::sleep_for(std::chrono::milliseconds(delayPerExec));
+
+            int startTick = cpuTicks.load();
+            while (cpuTicks.load() - startTick < delayPerExec) {
+
+            }
         }
 
         proc->setFinished(true);

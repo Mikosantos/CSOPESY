@@ -55,14 +55,13 @@ void ConsolePanel::setCurrentScreen(std::shared_ptr<Console> screenPanel){
 }
 
 void ConsolePanel::listProcesses(const std::vector<std::shared_ptr<Process>>& processes) {
+    
     std::cout << "Running Processes: \n";
-
     //if not finished
-
     for (const auto& proc : processes) {
         if (proc->getProcessName() == "MAIN_SCREEN") continue;
 
-        if(!proc->isFinished()) {
+        if(!proc->isFinished() && proc->getCompletedCommands() > 0) {
             std::cout << std::left << std::setw(15) << proc->getProcessName()
                   << proc->getTime() << "   "
                   << "Core: "   << ORANGE << proc->getCoreNo()  << RESET << "   "
@@ -73,9 +72,7 @@ void ConsolePanel::listProcesses(const std::vector<std::shared_ptr<Process>>& pr
     }
 
     std::cout << "\nFinished Processes: \n";
-
     //if finished
-
     for (const auto& proc : processes) {
         if (proc->getProcessName() == "MAIN_SCREEN") continue;
 
@@ -89,7 +86,7 @@ void ConsolePanel::listProcesses(const std::vector<std::shared_ptr<Process>>& pr
         } 
     }
 
-    std::cout << "======================================\n";
+    std::cout << "======================================\n\n";
 }
 
 void ConsolePanel::addConsolePanel(std::shared_ptr<Console> screenPanel){
