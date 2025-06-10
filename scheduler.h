@@ -58,6 +58,9 @@ public:
     void stop();
     void addProcess(const std::shared_ptr<Process>& proc);
 
+    int getBusyCoreCount() const;
+    int getAvailableCoreCount() const;
+
 private:
     void schedulerLoop();
     void coreWorker(int coreId);

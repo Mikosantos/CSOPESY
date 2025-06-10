@@ -351,8 +351,8 @@ void report_util() {
 void printSystemSummary() {
     cout << "========== System Summary ============\n";
     cout << "CPU Utilization: "    << 100 << "%\n";
-    cout << "Cores Used: "         << 16 << "\n";
-    cout << "Cores available: "    << 0 << "\n";
+    cout << "Cores Used: "         << scheduler->getBusyCoreCount() << "\n";
+    cout << "Cores available: "    << scheduler->getAvailableCoreCount() << "\n";
     cout << "======================================\n";
 }
 
