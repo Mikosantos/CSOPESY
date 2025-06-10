@@ -6,6 +6,7 @@
 #include <time.h>
 #include <thread>
 #include <sstream>
+#include <filesystem>
 
 // constructor for the Scheduler class
 Scheduler::Scheduler(int cores, int delay)
@@ -128,8 +129,19 @@ void Scheduler::coreWorker(int coreId) {
         auto proc = core->assignedProcess;
         lock.unlock();
 
+        // create directory for logs (if not yet exists)
+        std::string logsDir = "processLogs";
+        std::error_code err;
+
+        if (!std::filesystem::exists(logsDir)) {
+            std::filesystem::create_directory(logsDir);
+        }
+
+        // Construct file path with logs directory
+        std::string logFilePath = logsDir + "/" + proc->getProcessName() + ".txt";
+
         // write to file
-        std::ofstream file(proc->getProcessName() + ".txt", std::ios::app);
+        std::ofstream file(logFilePath, std::ios::app);
         file << "Process name: " << proc->getProcessName() 
              << "\nLogs: \n\n";
 
