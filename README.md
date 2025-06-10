@@ -1,4 +1,4 @@
-Note: to run **"Scheduler"** branch using run/debug button in VSCode, change args in tasks.json to the following:
+Note: to run **"Process"** branch using run/debug button in VSCode, change args in tasks.json to the following:
 
 ```bash
 "args": [
