@@ -129,8 +129,12 @@ void Scheduler::coreWorker(int coreId) {
         lock.unlock();
 
         // write to file
+        std::ofstream file(proc->getProcessName() + ".txt", std::ios::app);
+        file << "Process name: " << proc->getProcessName() 
+             << "\nLogs: \n\n";
+
         while (proc->getCompletedCommands() < proc->getTotalNoOfCommands()) {
-            std::ofstream file(proc->getProcessName() + ".txt", std::ios::app);
+            
 
             // Generate current time (per instruction)
             auto now = std::chrono::system_clock::now();
@@ -158,9 +162,7 @@ void Scheduler::coreWorker(int coreId) {
                       << ampm << ")";
 
             // Write full line with real-time timestamp
-            file << timestamp.str()
-                << " Core: " << coreId
-                << "  \"Hello world from " << proc->getProcessName() << "!\"" << std::endl;
+            file << timestamp.str() << " Core: " << coreId << "  \"Hello world from " << proc->getProcessName() << "!\"" << std::endl;
 
             proc->setCompletedCommands(proc->getCompletedCommands() + 1);
             // std::this_thread::sleep_for(std::chrono::milliseconds(delayPerExec));

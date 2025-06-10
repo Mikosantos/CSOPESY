@@ -16,6 +16,7 @@
 #include <sstream>
 #include <iomanip>
 #include <filesystem>
+#include <fstream>
 #include <chrono>
 
 #define ORANGE "\033[38;5;208m"
@@ -32,7 +33,7 @@ pair<string, vector<string>> parseCommand(const string& input);
 void initialize();
 void scheduler_start();
 void scheduler_stop();
-void report_util();
+void report_util(const std::vector<std::shared_ptr<Process>>& processList);
 void printSystemSummary();
 void printHelpMenu();
 void handleExit();
@@ -113,7 +114,7 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
     } 
     
     else if (cmd == "report-util") {
-        report_util();
+        report_util(processList);
     } 
     
     else if (cmd == "screen" && args.size() >= 1 && args[0] == "-ls") {
@@ -333,7 +334,6 @@ void initialize() {
     }
 }
 
-
 // creates X number of processes with random instruction lines
 void scheduler_start() {
 	cout << "'scheduler-start' command recognized. Doing something.\n\n";
@@ -344,8 +344,53 @@ void scheduler_stop() {
 	cout << "'scheduler-stop' command recognized. Doing something.\n\n";
 }
 
-void report_util() {
-	cout << "'report-util' command recognized. Doing something.\n\n";
+void report_util(const std::vector<std::shared_ptr<Process>>& processList) {
+    std::ofstream log("csopesy-log.txt");
+    if (!log.is_open()) {
+        std::cerr << "Failed to open csopesy-log.txt for writing.\n";
+        return;
+    }
+
+    log << "========== System Summary ============\n";
+    if (scheduler) {
+        log << "CPU Utilization: " << "100%" << "\n";  // Placeholder
+        log << "Cores Used: " << scheduler->getBusyCoreCount() << "\n";
+        log << "Cores available: " << scheduler->getAvailableCoreCount() << "\n";
+    } else {
+        log << "Scheduler not running.\n";
+    }
+    log << "======================================\n";
+
+    // Running processes
+    log << "Running Processes:\n";
+    for (const auto& proc : processList) {
+        if (proc->getProcessName() == "MAIN_SCREEN") continue;
+        if (!proc->isFinished()) {
+            log << std::left << std::setw(15) << proc->getProcessName()
+                << proc->getRawTime() << "   "
+                << "Core: " << proc->getCoreNo() << "   "
+                << proc->getCompletedCommands() << " / "
+                << proc->getTotalNoOfCommands() << "\n";
+        }
+    }
+
+    // Finished processes
+    log << "\nFinished Processes:\n";
+    log << "======================================\n";
+    for (const auto& proc : processList) {
+        if (proc->getProcessName() == "MAIN_SCREEN") continue;
+        if (proc->isFinished()) {
+            log << std::left << std::setw(15) << proc->getProcessName()
+                << proc->getRawTime() << "   "
+                << "Finished!" << "   "
+                << proc->getCompletedCommands() << " / "
+                << proc->getTotalNoOfCommands() << "\n";
+        }
+    }
+
+    log << "======================================\n";
+    log.close();
+    cout << "System utilization report saved to csopesy-log.txt\n\n";
 }
 
 void printSystemSummary() {
