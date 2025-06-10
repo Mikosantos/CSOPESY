@@ -23,6 +23,7 @@ class Process {
 
         //Getters
         std::string getTime();
+        std::string getRawTime() const;
         std::string getProcessName();
         int getTotalNoOfCommands();
         int getCompletedCommands();
