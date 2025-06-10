@@ -7,6 +7,7 @@
 #include <thread>
 #include <sstream>
 
+// constructor for the Scheduler class
 Scheduler::Scheduler(int cores, int delay)
     : coreCount(cores), delayPerExec(delay) {}
 
