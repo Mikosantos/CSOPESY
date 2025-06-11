@@ -175,7 +175,6 @@ void Scheduler::coreWorker(int coreId) {
             while (running && (cpuTicks.load() - startTick < delayPerExec)) {
 
             }
-            // TODO: not exiting properly if theres a running process
             if (!running) {
                 break;
             }

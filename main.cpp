@@ -238,6 +238,7 @@ void setColor( unsigned char color ){
 }
 
 void printLastUpdated() {
+    // TODO: consider all cpp related files
     namespace fs = std::filesystem;
 
     std::string path = (fs::current_path() / "main.cpp").string();
@@ -364,12 +365,12 @@ void initialize() {
     }
 }
 
-// creates X number of processes with random instruction lines
+// TODO: creates X number of processes with random instruction lines
 void scheduler_start() {
 	cout << "'scheduler-start' command recognized. Doing something.\n\n";
 }
 
-// stops generating dummy processes
+// TODO: stops generating dummy processes
 void scheduler_stop() {
 	cout << "'scheduler-stop' command recognized. Doing something.\n\n";
 }
