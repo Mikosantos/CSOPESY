@@ -306,6 +306,36 @@ pair<string, vector<string>> parseCommand(const string& input) {
 }
 
 void initialize() {
+    // delete any existing previous logs
+    std::string logsDir = "processLogs";
+    std::string consoleLogFile = "csopesy-log.txt";
+
+    try {
+        bool isDeleted = false;
+        
+        // Delete processLogs directory if it exists
+        if (std::filesystem::exists(logsDir)) {
+            std::uintmax_t numRemoved = std::filesystem::remove_all(logsDir);
+            if (numRemoved > 0) {
+                isDeleted = true;
+            }
+        }
+        
+        // Delete console-log.txt if it exists
+        if (std::filesystem::exists(consoleLogFile)) {
+            std::filesystem::remove(consoleLogFile);
+            isDeleted = true;
+        }
+        
+        if (isDeleted) {
+            std::cout << "Deleted previous log files." << std::endl;
+        }
+        
+    } catch (const std::filesystem::filesystem_error& e) {
+        std::cerr << "Error deleting files: " << e.what() << std::endl;
+    }
+
+
     config = loadConfig("config.txt");
 
     std::cout << ORANGE << "[Initializing System...]\n" << RESET;
