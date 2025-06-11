@@ -49,6 +49,7 @@ void Scheduler::stop() {
 
     // Wake all threads in case they're waiting
     for (auto& core : cores) {
+        std::unique_lock<std::mutex> lock(core->lock);
         core->cv.notify_all();
     }
 
@@ -77,40 +78,31 @@ void Scheduler::addProcess(const std::shared_ptr<Process>& proc) {
 // Main scheduler loop that checks for ready processes and assigns them to cores
 void Scheduler::schedulerLoop() {
     while (running) {
-        std::shared_ptr<Process> nextProc = nullptr;
+        // look for an available core
+        for (int i = 0; i < coreCount; ++i) {
+            auto& core = cores[i];
+            std::unique_lock<std::mutex> coreLock(core->lock);
 
-        {
-            std::lock_guard<std::mutex> lock(queueMutex);
-            if (!readyQueue.empty()) {
-                // Only check the front, don't pop yet
-                nextProc = readyQueue.front();
-            }
-        }
-
-        if (nextProc) {
-            bool assigned = false;
-            for (int i = 0; i < coreCount; ++i) {
-                auto& core = cores[i];
-                std::unique_lock<std::mutex> lock(core->lock);
-                if (!core->busy && core->assignedProcess == nullptr || core->assignedProcess->isFinished()) {
-                    {
-                        std::lock_guard<std::mutex> qLock(queueMutex);
-                        readyQueue.pop();  // Now we remove it from queue
+            if (!core->busy && core->assignedProcess == nullptr) {
+                std::shared_ptr<Process> nextProc = nullptr;
+                {
+                    std::lock_guard<std::mutex> qLock(queueMutex);
+                    if (!readyQueue.empty()) {
+                        nextProc = readyQueue.front();
+                        readyQueue.pop();
                     }
+                }
 
-                    core->assignedProcess = nextProc;
-                    core->busy = true;
-                    nextProc->setCoreNum(i);
-                    core->cv.notify_one();
-                    assigned = true;
-                    break;
+            if (nextProc) {
+                core->assignedProcess = nextProc;
+                core->busy = true;
+                nextProc->setCoreNum(i);
+                core->cv.notify_one();
+                break;
                 }
             }
-
-            // 💡 If no core was available, just leave it in the queue for next loop
         }
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 }
 
@@ -146,7 +138,6 @@ void Scheduler::coreWorker(int coreId) {
              << "\nLogs: \n\n";
 
         while (proc->getCompletedCommands() < proc->getTotalNoOfCommands()) {
-            
 
             // Generate current time (per instruction)
             auto now = std::chrono::system_clock::now();
@@ -175,6 +166,7 @@ void Scheduler::coreWorker(int coreId) {
 
             // Write full line with real-time timestamp
             file << timestamp.str() << " Core: " << coreId << "  \"Hello world from " << proc->getProcessName() << "!\"" << std::endl;
+            file.flush();
 
             proc->setCompletedCommands(proc->getCompletedCommands() + 1);
             // std::this_thread::sleep_for(std::chrono::milliseconds(delayPerExec));
@@ -183,13 +175,15 @@ void Scheduler::coreWorker(int coreId) {
             while (cpuTicks.load() - startTick < delayPerExec) {
 
             }
+            // TODO: not exiting properly if theres a running process
         }
 
         proc->setFinished(true);
 
         lock.lock();
-        core->assignedProcess = nullptr;
         core->busy = false;
+        core->assignedProcess = nullptr;
+        lock.unlock();
     }
 }
 
@@ -201,7 +195,7 @@ int Scheduler::getBusyCoreCount() const {
     int count = 0;
     for (const auto& core : cores) {
         std::lock_guard<std::mutex> lock(core->lock);
-        if (core->assignedProcess && !core->assignedProcess->isFinished()) {
+        if (core->busy) {
             count++;
         }
     }

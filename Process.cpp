@@ -15,7 +15,7 @@ Process::Process(std::string& pName, int totalCom)
 : processName(pName), totalNoOfCommands(totalCom) {
     time = std::chrono::system_clock::now();
     setCompletedCommands(0);
-    setCoreNum(0);
+    setCoreNum(-1);
     setProcessNum(NextProcessNum++);
     setFinished(false);
 };

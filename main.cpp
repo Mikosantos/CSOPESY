@@ -365,7 +365,7 @@ void report_util(const std::vector<std::shared_ptr<Process>>& processList) {
     log << "Running Processes:\n";
     for (const auto& proc : processList) {
         if (proc->getProcessName() == "MAIN_SCREEN") continue;
-        if (!proc->isFinished()) {
+        if (!proc->isFinished()  && proc->getCompletedCommands() > 0) {
             log << std::left << std::setw(15) << proc->getProcessName()
                 << proc->getRawTime() << "   "
                 << "Core: " << proc->getCoreNo() << "   "
