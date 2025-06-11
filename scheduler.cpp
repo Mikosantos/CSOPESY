@@ -137,7 +137,7 @@ void Scheduler::coreWorker(int coreId) {
         file << "Process name: " << proc->getProcessName() 
              << "\nLogs: \n\n";
 
-        while (proc->getCompletedCommands() < proc->getTotalNoOfCommands()) {
+        while (running && proc->getCompletedCommands() < proc->getTotalNoOfCommands()) {
 
             // Generate current time (per instruction)
             auto now = std::chrono::system_clock::now();
@@ -172,10 +172,13 @@ void Scheduler::coreWorker(int coreId) {
             // std::this_thread::sleep_for(std::chrono::milliseconds(delayPerExec));
 
             int startTick = cpuTicks.load();
-            while (cpuTicks.load() - startTick < delayPerExec) {
+            while (running && (cpuTicks.load() - startTick < delayPerExec)) {
 
             }
             // TODO: not exiting properly if theres a running process
+            if (!running) {
+                break;
+            }
         }
 
         proc->setFinished(true);
