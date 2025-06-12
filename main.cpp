@@ -158,11 +158,12 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
         string procName = args[1];
         bool foundScreen = false, foundProcess = false;
         std::shared_ptr<Process> targetProcess = nullptr;
+        std::shared_ptr<Console> currentPanel = nullptr;
 
         for (auto& s : screens) {
             if (s->getConsoleName() == procName) {
                 foundScreen = true;
-                consolePanel.setCurrentScreen(s);
+                currentPanel = s;
                 break;
             }
         }
@@ -181,6 +182,7 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
         }
 
         clearToProcessScreen();
+        consolePanel.setCurrentScreen(currentPanel);
         displayProcessScreen(targetProcess);
 
     } 
@@ -411,6 +413,7 @@ void scheduler_stop() {
 }
 
 void report_util(const std::vector<std::shared_ptr<Process>>& processList) {
+    std::filesystem::path logPath = std::filesystem::current_path() / "csopesy-log.txt";
     std::ofstream log("csopesy-log.txt");
     if (!log.is_open()) {
         std::cerr << "Failed to open csopesy-log.txt for writing.\n";
@@ -442,7 +445,6 @@ void report_util(const std::vector<std::shared_ptr<Process>>& processList) {
 
     // Finished processes
     log << "\nFinished Processes:\n";
-    log << "======================================\n";
     for (const auto& proc : processList) {
         if (proc->getProcessName() == "MAIN_SCREEN") continue;
         if (proc->isFinished()) {
@@ -453,10 +455,12 @@ void report_util(const std::vector<std::shared_ptr<Process>>& processList) {
                 << proc->getTotalNoOfCommands() << "\n";
         }
     }
-
     log << "======================================\n";
+
     log.close();
-    cout << "System utilization report saved to csopesy-log.txt\n\n";
+    setColor(0x02); //color green
+    cout << "Report generated at: " << logPath << "!\n\n";
+    setColor(0x07); //default
 }
 
 void printSystemSummary() {
