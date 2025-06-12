@@ -4,6 +4,7 @@
 #include "Process.h"
 #include "Scheduler.h"
 #include "Config.h"
+#include "InstructionUtils.h"
 
 /* Libraries */
 #include <string>
@@ -141,8 +142,14 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
 
         clearToProcessScreen();
         auto newProc = make_shared<Process>(procName, total);
-        processList.push_back(newProc);
 
+        auto instructions = generateRandomInstructions(total);
+        for (const auto& instr : instructions) {
+            newProc->addInstruction(instr);
+        }
+
+
+        processList.push_back(newProc);
         scheduler->addProcess(newProc);
 
         // di ko pa gets
@@ -227,14 +234,14 @@ void displayProcessScreen(const std::shared_ptr<Process>& proc) {
     std::string logsDir = "processLogs";
     std::string logFilePath = logsDir + "/" + proc->getProcessName() + ".txt";
 
-    std::cout << "\n=====================================================\n";
+    cout << "\n=====================================================\n";
     setColor(0x02); //color green
-    std::cout << "                  PROCESS CONSOLE SCREEN             \n";
+    cout << "                  PROCESS CONSOLE SCREEN             \n";
     setColor(0x07); // default
-    std::cout << "=====================================================\n";
-    std::cout << "Process name: " << proc->getProcessName() << "\n";
-    std::cout << "ID: " << ORANGE << proc->getProcessNo() << RESET << "\n";
-    std::cout << "Logs:\n";
+    cout << "=====================================================\n";
+    cout << "Process name: " << proc->getProcessName() << "\n";
+    cout << "ID: " << ORANGE << proc->getProcessNo() << RESET << "\n";
+    cout << "Logs:\n";
 
     // ✅ Read and print log file
     std::ifstream file(logFilePath);
@@ -253,12 +260,12 @@ void displayProcessScreen(const std::shared_ptr<Process>& proc) {
         }
         file.close();
     } else {
-        std::cout << "No logs available yet.\n";
+        cout << "No logs available yet.\n";
     }
 
     std::cout << "\n";
 
-    // ✅ Progress / Completion message
+    // Progress / Completion message
     if (proc->isFinished()) {
         std::cout << ORANGE << "Finished!" << RESET << "\n";
     } else {
@@ -268,7 +275,6 @@ void displayProcessScreen(const std::shared_ptr<Process>& proc) {
 
     std::cout << "=====================================================\n";
 }
-
 
 void setColor( unsigned char color ){
 	SetConsoleTextAttribute( GetStdHandle( STD_OUTPUT_HANDLE ), color );
