@@ -39,7 +39,8 @@ void printHelpMenu();
 void handleExit();
 void clear();
 void clearToProcessScreen();
-void displayProcessScreen(shared_ptr<Process> nProcess);
+void displayProcessScreen(const std::shared_ptr<Process>& proc);
+void printLastUpdated();
 
 std::unique_ptr<Scheduler> scheduler;
 Config config;
@@ -220,18 +221,50 @@ void handleProcessScreenCommands(const string& cmd, const string& currentScreenN
     }
 }
 
-void displayProcessScreen(shared_ptr<Process> newProcess) {
-    cout << "\n=====================================================\n";
-    cout << "                  PROCESS CONSOLE SCREEN             \n";
-    cout << "=====================================================\n";
-    cout << "Process name: " << newProcess->getProcessName() << "\n";
-    cout << "ID: " << ORANGE << newProcess->getProcessNo() << RESET << "\n";
-    cout << "Logs: "<< endl;
-    cout << newProcess->getTime() << " Core: " << ORANGE << newProcess->getCoreNo() << RESET << " \"Hello world from " << newProcess->getProcessName() << "!\""<< "\n\n";
-    cout << "Current instruction line: " << ORANGE << newProcess->getCompletedCommands() << RESET << "\n";
-    cout << "Lines of instruction: "     << ORANGE << newProcess->getTotalNoOfCommands() << RESET << "\n";
-    cout << "=====================================================\n";
+void displayProcessScreen(const std::shared_ptr<Process>& proc) {
+    std::string logsDir = "processLogs";
+    std::string logFilePath = logsDir + "/" + proc->getProcessName() + ".txt";
+
+    std::cout << "\n=====================================================\n";
+    std::cout << "                  PROCESS CONSOLE SCREEN             \n";
+    std::cout << "=====================================================\n";
+    std::cout << "Process name: " << proc->getProcessName() << "\n";
+    std::cout << "ID: " << ORANGE << proc->getProcessNo() << RESET << "\n";
+    std::cout << "Logs:\n";
+
+    // ✅ Read and print log file
+    std::ifstream file(logFilePath);
+    if (file.is_open()) {
+        std::string line;
+        bool skipHeader = true;
+        while (std::getline(file, line)) {
+            // Skip first 2 lines (name + Logs:)
+            if (skipHeader && (line.find("Logs:") != std::string::npos)) {
+                skipHeader = false;
+                continue;
+            }
+            if (!skipHeader) {
+                std::cout << line << "\n";
+            }
+        }
+        file.close();
+    } else {
+        std::cout << "No logs available yet.\n";
+    }
+
+    std::cout << "\n";
+
+    // ✅ Progress / Completion message
+    if (proc->isFinished()) {
+        std::cout << ORANGE << "Finished!" << RESET << "\n";
+    } else {
+        std::cout << "Current instruction line: " << ORANGE << proc->getCompletedCommands() << RESET << "\n";
+        std::cout << "Lines of instruction: " << ORANGE << proc->getTotalNoOfCommands() << RESET << "\n";
+    }
+
+    std::cout << "=====================================================\n";
 }
+
 
 void setColor( unsigned char color ){
 	SetConsoleTextAttribute( GetStdHandle( STD_OUTPUT_HANDLE ), color );
