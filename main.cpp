@@ -226,7 +226,9 @@ void displayProcessScreen(const std::shared_ptr<Process>& proc) {
     std::string logFilePath = logsDir + "/" + proc->getProcessName() + ".txt";
 
     std::cout << "\n=====================================================\n";
+    setColor(0x02); //color green
     std::cout << "                  PROCESS CONSOLE SCREEN             \n";
+    setColor(0x07); // default
     std::cout << "=====================================================\n";
     std::cout << "Process name: " << proc->getProcessName() << "\n";
     std::cout << "ID: " << ORANGE << proc->getProcessNo() << RESET << "\n";
