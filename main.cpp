@@ -338,7 +338,6 @@ pair<string, vector<string>> parseCommand(const string& input) {
 
 void initialize() {
     // delete any existing previous logs
-    std::string logsDir = "processLogs";
     std::string consoleLogFile = "csopesy-log.txt";
 
     try {
