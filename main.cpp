@@ -2,9 +2,11 @@
 #include "Console.h"
 #include "ConsolePanel.h"
 #include "Process.h"
-#include "Scheduler.h"
 #include "Config.h"
+#include "Scheduler.h"
 #include "InstructionUtils.h"
+#include "FCFSScheduler.h"
+#include "RRScheduler.h"
 
 /* Libraries */
 #include <string>
@@ -382,13 +384,20 @@ void initialize() {
     std::cout << "\nStarting scheduler...\n";
 
     if (config.schedulerType == "fcfs") {
-        scheduler = std::make_unique<Scheduler>(config.numCPUs, config.delaysPerExec);
+        scheduler = std::make_unique<FCFSScheduler>(config.numCPUs, config.delaysPerExec);
         scheduler->start();
         std::cout << ORANGE << "[FCFS Scheduler started with "
                   << config.numCPUs << " cores]" << RESET << "\n\n";
-    } else if (config.schedulerType == "rr") {
-        std::cout << "Round Robin scheduler is not yet implemented.\n\n";
-    } else {
+    } 
+    
+    else if (config.schedulerType == "rr") {
+        scheduler = std::make_unique<RRScheduler>(config.numCPUs, config.delaysPerExec, config.quantumCycles);
+        scheduler->start();
+        std::cout << ORANGE << "[RR Scheduler started with "
+                  << config.numCPUs << " cores]" << RESET << "\n\n";
+    } 
+    
+    else {
         std::cout << "Invalid scheduler type in config file.\n\n";
         return;
     }
@@ -500,10 +509,10 @@ void startBatchGeneration(std::vector<std::shared_ptr<Process>>& processList, Co
     isBatchGenerating = true;
 
     batchGeneratorThread = std::thread([&processList, &consolePanel]() {
-        int lastTick = scheduler->getCpuTicks();
+        int lastTick = scheduler->getCPUTicks();
 
         while (isBatchGenerating) {
-            int currentTick = scheduler->getCpuTicks();
+            int currentTick = scheduler->getCPUTicks();
 
             if (currentTick - lastTick >= config.batchProcessFreq) {
                 lastTick = currentTick;

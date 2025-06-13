@@ -55,39 +55,40 @@ void ConsolePanel::setCurrentScreen(std::shared_ptr<Console> screenPanel){
 }
 
 void ConsolePanel::listProcesses(const std::vector<std::shared_ptr<Process>>& processes) {
-    
     std::cout << "Running Processes: \n";
-    //if not finished
+
     for (const auto& proc : processes) {
         if (proc->getProcessName() == "MAIN_SCREEN") continue;
 
-        if(!proc->isFinished() && proc->getCompletedCommands() > 0) {
+        // Consider it running if not finished and still has a valid core assignment
+        if (!proc->isFinished() && proc->getCoreNo() != -1) {
             std::cout << std::left << std::setw(15) << proc->getProcessName()
-                  << proc->getTime() << "   "
-                  << "Core: "   << ORANGE << proc->getCoreNo()  << RESET << "   "
-                  << ORANGE     << proc->getCompletedCommands() << RESET << BLUE << " / " << RESET
-                  << ORANGE     << proc->getTotalNoOfCommands() << RESET
-                  << "\n";
-        } 
+                      << proc->getTime() << "   "
+                      << "Core: "   << ORANGE << proc->getCoreNo()  << RESET << "   "
+                      << ORANGE     << proc->getCompletedCommands() << RESET << BLUE << " / " << RESET
+                      << ORANGE     << proc->getTotalNoOfCommands() << RESET
+                      << "\n";
+        }
     }
 
     std::cout << "\nFinished Processes: \n";
-    //if finished
+
     for (const auto& proc : processes) {
         if (proc->getProcessName() == "MAIN_SCREEN") continue;
 
-        if(proc->isFinished()) {
+        if (proc->isFinished()) {
             std::cout << std::left << std::setw(15) << proc->getProcessName()
-                  << proc->getTime()                            << "   "
-                  << "Finished!"                                << RESET << "   "
-                  << ORANGE     << proc->getCompletedCommands() << RESET << BLUE << " / " << RESET
-                  << ORANGE     << proc->getTotalNoOfCommands() << RESET
-                  << "\n";
-        } 
+                      << proc->getTime()                            << "   "
+                      << "Finished!"                                << RESET << "   "
+                      << ORANGE     << proc->getCompletedCommands() << RESET << BLUE << " / " << RESET
+                      << ORANGE     << proc->getTotalNoOfCommands() << RESET
+                      << "\n";
+        }
     }
 
     std::cout << "======================================\n\n";
 }
+
 
 void ConsolePanel::addConsolePanel(std::shared_ptr<Console> screenPanel){
     consolePanels.push_back(screenPanel);
