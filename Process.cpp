@@ -178,48 +178,43 @@ bool Process::isSleeping(int currentTick) const {
     return sleepUntilTick > currentTick;
 }
 
-bool Process::executeInstruction(int coreId, int currentTick, std::ofstream& file) {
+bool Process::executeInstruction(int coreId, int currentTick) {
     if (instructionPointer >= instructions.size()) return false;
 
     const Instruction& instr = instructions[instructionPointer];
 
     // Write log header
-    file << processTimeStamp() << "   Core: " << coreId << "   ";
+    std::ostringstream log;
+    log << processTimeStamp() << "   Core: " << coreId << "   ";
 
     switch (instr.type) {
         case InstructionType::PRINT:
-            file << "PRINT \"Hello world from " << processName << "!\"";
+            log << "PRINT \"Hello world from " << processName << "!\"\n";
             break;
-
         case InstructionType::DECLARE:
-            file << "DECLARE " << instr.var1 << " = " << instr.value;
+            log << "DECLARE " << instr.var1 << " = " << instr.value << "\n";
             declareVariable(instr.var1, instr.value);
             break;
-
         case InstructionType::ADD:
-            file << "ADD " << instr.var1 << " = "
-                 << instr.var2 << "/" << getVariable(instr.var2) << " + "
-                 << instr.var3 << "/" << getVariable(instr.var3);
+            log << "ADD " << instr.var1 << " = "
+                << instr.var2 << "/" << getVariable(instr.var2) << " + "
+                << instr.var3 << "/" << getVariable(instr.var3) << "\n";
             setVariable(instr.var1, getVariable(instr.var2) + getVariable(instr.var3));
             break;
-
         case InstructionType::SUBTRACT:
-            file << "SUBTRACT " << instr.var1 << " = "
-                 << instr.var2 << "/" << getVariable(instr.var2) << " - "
-                 << instr.var3 << "/" << getVariable(instr.var3);
+            log << "SUBTRACT " << instr.var1 << " = "
+                << instr.var2 << "/" << getVariable(instr.var2) << " - "
+                << instr.var3 << "/" << getVariable(instr.var3) << "\n";
             setVariable(instr.var1, getVariable(instr.var2) - getVariable(instr.var3));
             break;
-
         case InstructionType::SLEEP:
-            file << "SLEEP for " << (int)instr.sleepTicks << " ticks";
-            sleepUntilTick = currentTick + instr.sleepTicks;
+            log << "SLEEP for " << static_cast<int>(instr.sleepTicks) << " ticks" << "\n";
+            setSleepUntil(currentTick + instr.sleepTicks);
             break;
-        
-        // TO DO: IMPLEMENT FOR LOOP
     }
 
-    file << "\n";
-    file.flush();
+    appendLogLine(log.str());
+
 
     // Update internal state
     instructionPointer++;

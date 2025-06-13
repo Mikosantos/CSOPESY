@@ -27,6 +27,8 @@ class Process {
         int instructionPointer = 0;
         int sleepUntilTick = -1;
 
+        std::vector<std::string> logLines;
+
     public:
         Process(std::string& pName, int totalCom);
 
@@ -56,7 +58,7 @@ class Process {
 
         // instruction
         void addInstruction(const Instruction& instr);
-        bool executeInstruction(int coreId, int currentTick, std::ofstream& file);
+        bool executeInstruction(int coreId, int currentTick);
         bool isSleeping(int currentTick) const;
 
         void declareVariable(const std::string& name, uint16_t value = 0);
@@ -76,5 +78,13 @@ class Process {
 
         const std::vector<Instruction>& getInstructions() const {
             return instructions;
+        }
+
+        const std::vector<std::string>& getLogLines() const { 
+            return logLines; 
+        }
+
+        void appendLogLine(const std::string& line) { 
+            logLines.push_back(line); 
         }
 };

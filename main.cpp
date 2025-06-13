@@ -241,26 +241,13 @@ void displayProcessScreen(const std::shared_ptr<Process>& proc) {
     cout << "=====================================================\n";
     cout << "Process name: " << proc->getProcessName() << "\n";
     cout << "ID: " << ORANGE << proc->getProcessNo() << RESET << "\n";
-    cout << "Logs:\n";
+    cout << "Logs:\n\n";
 
-    // ✅ Read and print log file
-    std::ifstream file(logFilePath);
-    if (file.is_open()) {
-        std::string line;
-        bool skipHeader = true;
-        while (std::getline(file, line)) {
-            // Skip first 2 lines (name + Logs:)
-            if (skipHeader && (line.find("Logs:") != std::string::npos)) {
-                skipHeader = false;
-                continue;
-            }
-            if (!skipHeader) {
-                std::cout << line << "\n";
-            }
-        }
-        file.close();
-    } else {
-        cout << "No logs available yet.\n";
+    // print each instruction logs
+    const auto& logs = proc->getLogLines();
+
+    for (const auto& line : logs) {
+        std::cout << line;
     }
 
     std::cout << "\n";

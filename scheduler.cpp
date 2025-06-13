@@ -123,17 +123,6 @@ void Scheduler::coreWorker(int coreId) {
         auto proc = core->assignedProcess;
         lock.unlock();
 
-        // Create logs folder if it doesn't exist
-        std::string logsDir = "processLogs";
-        std::error_code err;
-        if (!std::filesystem::exists(logsDir)) {
-            std::filesystem::create_directory(logsDir, err);
-        }
-
-        std::string logFilePath = logsDir + "/" + proc->getProcessName() + ".txt";
-        std::ofstream file(logFilePath, std::ios::app);
-        file << "Process name: " << proc->getProcessName() << "\nLogs:\n\n";
-
         // execution loop for the process
         while (running && proc->getCompletedCommands() < proc->getTotalNoOfCommands()) {
             if (proc->isSleeping(cpuTicks.load())) {
@@ -141,7 +130,7 @@ void Scheduler::coreWorker(int coreId) {
                 continue;
             }
 
-            proc->executeInstruction(coreId, cpuTicks.load(), file);
+            proc->executeInstruction(coreId, cpuTicks.load());
 
             // Simulate delayPerExec
             int startTick = cpuTicks.load();
