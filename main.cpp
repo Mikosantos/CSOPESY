@@ -344,14 +344,6 @@ void initialize() {
     try {
         bool isDeleted = false;
         
-        // Delete processLogs directory if it exists
-        if (std::filesystem::exists(logsDir)) {
-            std::uintmax_t numRemoved = std::filesystem::remove_all(logsDir);
-            if (numRemoved > 0) {
-                isDeleted = true;
-            }
-        }
-        
         // Delete console-log.txt if it exists
         if (std::filesystem::exists(consoleLogFile)) {
             std::filesystem::remove(consoleLogFile);
@@ -359,7 +351,7 @@ void initialize() {
         }
         
         if (isDeleted) {
-            std::cout << "Deleted previous log files." << std::endl;
+            std::cout << "Deleted previous log files.\n\n";
         }
         
     } catch (const std::filesystem::filesystem_error& e) {
