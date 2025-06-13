@@ -6,6 +6,11 @@
 #include <string>
 #include <conio.h>
 #include <random>
+#include <iomanip>
+
+#define ORANGE "\033[38;5;208m"
+#define RESET  "\033[0m"
+#define BLUE   "\033[34m"
 
 std::shared_ptr<Console> ConsolePanel::curPanel = nullptr;
 std::vector<std::shared_ptr<Console>> ConsolePanel::consolePanels;
@@ -35,9 +40,11 @@ ConsolePanel::ConsolePanel(){
 std::shared_ptr<Console> ConsolePanel::getCurrentScreen(){
     return ConsolePanel::curPanel;
 }
+
 std::string ConsolePanel::getCurrentScreenName(){
     return ConsolePanel::curPanel->getConsoleName();
 }
+
 std::vector<std::shared_ptr<Console>> ConsolePanel::getConsolePanels(){
     return ConsolePanel::consolePanels;
 }
@@ -47,31 +54,39 @@ void ConsolePanel::setCurrentScreen(std::shared_ptr<Console> screenPanel){
     ConsolePanel::curPanel = screenPanel;
 }
 
-void ConsolePanel::listAvailableScreens() {
+void ConsolePanel::listProcesses(const std::vector<std::shared_ptr<Process>>& processes) {
+    
+    std::cout << "Running Processes: \n";
+    //if not finished
+    for (const auto& proc : processes) {
+        if (proc->getProcessName() == "MAIN_SCREEN") continue;
 
-    std::cout << "========== System Summary ============\n";
-    std::cout << "CPU Utilization: "    << 100 << "%\n";
-    std::cout << "Cores Used: "         << 16 << "\n";
-    std::cout << "Cores available: "    << 0 << "\n";
-    std::cout << "======================================\n";
-    std::cout << "Running Processes: \n\n";
-    std::cout << "Finished Processes: \n";
-    std::cout << "======================================\n";
-    std::cout << "Available Screens:\n";
-
-    for (const auto& consolePtr : ConsolePanel::consolePanels) {
-        std::cout << consolePtr->getConsoleName()
-                  << " - Created at: " << consolePtr->getCreationTime() << "\n";
+        if(!proc->isFinished() && proc->getCompletedCommands() > 0) {
+            std::cout << std::left << std::setw(15) << proc->getProcessName()
+                  << proc->getTime() << "   "
+                  << "Core: "   << ORANGE << proc->getCoreNo()  << RESET << "   "
+                  << ORANGE     << proc->getCompletedCommands() << RESET << BLUE << " / " << RESET
+                  << ORANGE     << proc->getTotalNoOfCommands() << RESET
+                  << "\n";
+        } 
     }
 
-    std::cout << "\n";
+    std::cout << "\nFinished Processes: \n";
+    //if finished
+    for (const auto& proc : processes) {
+        if (proc->getProcessName() == "MAIN_SCREEN") continue;
 
-    // std::cout << "\nCurrently Selected Console: ";
-    // if (ConsolePanel::curPanel != nullptr) {
-    //     std::cout << ConsolePanel::curPanel->getConsoleName() << "\n\n";
-    // } else {
-    //     std::cout << "None selected\n\n";
-    // }
+        if(proc->isFinished()) {
+            std::cout << std::left << std::setw(15) << proc->getProcessName()
+                  << proc->getTime()                            << "   "
+                  << "Finished!"                                << RESET << "   "
+                  << ORANGE     << proc->getCompletedCommands() << RESET << BLUE << " / " << RESET
+                  << ORANGE     << proc->getTotalNoOfCommands() << RESET
+                  << "\n";
+        } 
+    }
+
+    std::cout << "======================================\n\n";
 }
 
 void ConsolePanel::addConsolePanel(std::shared_ptr<Console> screenPanel){

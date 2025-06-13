@@ -14,6 +14,8 @@ class Process {
         std::ofstream logFile;
         std::chrono::time_point<std::chrono::system_clock> time;
 
+        bool finished = false;
+
         static int NextProcessNum;
 
     public:
@@ -21,12 +23,15 @@ class Process {
 
         //Getters
         std::string getTime();
+        std::string getRawTime() const;
         std::string getProcessName();
         int getTotalNoOfCommands();
         int getCompletedCommands();
         int getCoreNo();
         int getProcessNo();
         int getNextProcessNum();
+
+        bool isFinished();
         
         //Setters
         void setProcessName(const std::string& name);
@@ -34,6 +39,8 @@ class Process {
         void setCompletedCommands(int cCom);
         void setCoreNum(int coreNum);
         void setProcessNum(int procNum);
+
+        void setFinished(bool fin);
 
         //Auxilary 
         void displayScreen();

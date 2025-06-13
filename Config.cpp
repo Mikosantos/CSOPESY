@@ -1,0 +1,36 @@
+#include "Config.h"
+#include <fstream>
+#include <sstream>
+#include <iostream>
+#include <algorithm>
+
+Config loadConfig(const std::string& filePath) {  // ✅ No default here
+    Config config;
+    std::ifstream file(filePath);
+    std::string key, value;
+
+    if (!file.is_open()) {
+        std::cerr << "Failed to open " << filePath << "\n";
+        return config;
+    }
+
+    std::string line;
+    while (std::getline(file, line)) {
+        std::istringstream iss(line);
+        iss >> key >> std::ws;
+        std::getline(iss, value);
+
+        // Remove quotes if any
+        value.erase(std::remove(value.begin(), value.end(), '"'), value.end());
+
+        if (key == "num-cpu") config.numCPUs = std::stoi(value);
+        else if (key == "scheduler") config.schedulerType = value;
+        else if (key == "quantum-cycles") config.quantumCycles = std::stoi(value);
+        else if (key == "batch-process-freq") config.batchProcessFreq = std::stoi(value);
+        else if (key == "min-ins") config.minInstructions = std::stoi(value);
+        else if (key == "max-ins") config.maxInstructions = std::stoi(value);
+        else if (key == "delays-per-exec") config.delaysPerExec = std::stoi(value);
+    }
+
+    return config;
+}

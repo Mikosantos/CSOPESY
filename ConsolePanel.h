@@ -1,5 +1,7 @@
 #pragma once 
 #include "Console.h"
+#include "Process.h"
+
 #include <string>
 #include <vector>
 #include <memory>
@@ -21,5 +23,5 @@ class ConsolePanel{
         void setCurrentScreen(std::shared_ptr<Console> screenPanel);
         
         void addConsolePanel(std::shared_ptr<Console> screenPanel);
-        void listAvailableScreens();
+        static void listProcesses(const std::vector<std::shared_ptr<Process>>& processes);
 };

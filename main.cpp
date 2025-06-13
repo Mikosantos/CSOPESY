@@ -2,6 +2,8 @@
 #include "Console.h"
 #include "ConsolePanel.h"
 #include "Process.h"
+#include "Scheduler.h"
+#include "Config.h"
 
 /* Libraries */
 #include <string>
@@ -14,7 +16,11 @@
 #include <sstream>
 #include <iomanip>
 #include <filesystem>
+#include <fstream>
 #include <chrono>
+
+#define ORANGE "\033[38;5;208m"
+#define RESET  "\033[0m"
 
 using namespace std;
 
@@ -27,12 +33,17 @@ pair<string, vector<string>> parseCommand(const string& input);
 void initialize();
 void scheduler_start();
 void scheduler_stop();
-void report_util();
+void report_util(const std::vector<std::shared_ptr<Process>>& processList);
+void printSystemSummary();
 void printHelpMenu();
 void handleExit();
 void clear();
 void clearToProcessScreen();
-void displayProcessScreen(shared_ptr<Process> nProcess);
+void displayProcessScreen(const std::shared_ptr<Process>& proc);
+void printLastUpdated();
+
+std::unique_ptr<Scheduler> scheduler;
+Config config;
 
 int main() {
     srand(static_cast<unsigned>(time(nullptr)));
@@ -73,27 +84,46 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
 
     if (cmd == "exit") {
         notShuttingDown = false;
+        scheduler->stop();
         handleExit();
-    } else if (cmd == "initialize") {
+    } 
+    
+    else if (cmd == "initialize") {
         if (hasInitialized) {
             cout << "System has already been initialized.\n\n";
         } else {
-            initialize();
             hasInitialized = true;
+            initialize();
+
         }
-    } else if (cmd == "clear") {
+    } 
+    
+    else if (cmd == "clear") {
         clear();
-    } else if (cmd == "help") {
+    } 
+    
+    else if (cmd == "help") {
         printHelpMenu();
-    } else if (cmd == "scheduler-start") {
+    } 
+    
+    else if (cmd == "scheduler-start") {
         scheduler_start();
-    } else if (cmd == "scheduler-stop") {
+    } 
+    
+    else if (cmd == "scheduler-stop") {
         scheduler_stop();
-    } else if (cmd == "report-util") {
-        report_util();
-    } else if (cmd == "screen" && args.size() >= 1 && args[0] == "-ls") {
-        consolePanel.listAvailableScreens();
-    } else if (cmd == "screen" && args.size() >= 2 && args[0] == "-s") {
+    } 
+    
+    else if (cmd == "report-util") {
+        report_util(processList);
+    } 
+    
+    else if (cmd == "screen" && args.size() >= 1 && args[0] == "-ls") {
+        printSystemSummary();
+        consolePanel.listProcesses(processList);
+    } 
+    
+    else if (cmd == "screen" && args.size() >= 2 && args[0] == "-s") {
         string procName = args[1];
 
         for (const auto& c : screens) {
@@ -104,27 +134,36 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
         }
 
         int curr = 1 + rand() % 100;
-        int total = curr + rand() % 100;
+        int total = config.minInstructions + rand() % (config.maxInstructions - config.minInstructions + 1);
+        
+        // what's the difference between total and cmds?
         int cmds = total + rand() % 100;
 
         clearToProcessScreen();
-        auto newProc = make_shared<Process>(procName, cmds);
+        auto newProc = make_shared<Process>(procName, total);
         processList.push_back(newProc);
 
+        scheduler->addProcess(newProc);
+
+        // di ko pa gets
         auto procConsole = make_shared<Console>(procName, curr, total, newProc->getProcessNo());
         consolePanel.addConsolePanel(procConsole);
         consolePanel.setCurrentScreen(procConsole);
 
         displayProcessScreen(newProc);
 
-    } else if (cmd == "screen" && args.size() >= 2 && args[0] == "-r") {
+    } 
+    
+    else if (cmd == "screen" && args.size() >= 2 && args[0] == "-r") {
         string procName = args[1];
         bool foundScreen = false, foundProcess = false;
+        std::shared_ptr<Process> targetProcess = nullptr;
+        std::shared_ptr<Console> currentPanel = nullptr;
 
         for (auto& s : screens) {
             if (s->getConsoleName() == procName) {
                 foundScreen = true;
-                consolePanel.setCurrentScreen(s);
+                currentPanel = s;
                 break;
             }
         }
@@ -132,24 +171,23 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
         for (auto& p : processList) {
             if (p->getProcessName() == procName) {
                 foundProcess = true;
+                targetProcess = p;
                 break;
             }
         }
 
-        if (!foundScreen || !foundProcess) {
-            cout << "No such screen '" << procName << "' found.\n\n";
+        if (!foundScreen || !foundProcess || targetProcess->isFinished()) {
+            cout << "Process '" << procName << "' not found.\n\n";
             return;
         }
 
         clearToProcessScreen();
-        for (auto& p : processList) {
-            if (p->getProcessName() == procName) {
-                displayProcessScreen(p);
-                // cout << "\n\n";
-                break;
-            }
-        }
-    } else {
+        consolePanel.setCurrentScreen(currentPanel);
+        displayProcessScreen(targetProcess);
+
+    } 
+    
+    else {
         cout << "Unknown command! Type \"help\" for commandlist.\n\n";
     }
 }
@@ -168,7 +206,9 @@ void handleProcessScreenCommands(const string& cmd, const string& currentScreenN
             if (consolePanel.getCurrentScreenName() == "MAIN_SCREEN") {
                 clear();
             }
-    } else if (cmd == "process-smi") {
+    } 
+    
+    else if (cmd == "process-smi") {
         for (auto& p : processList) {
             if (p->getProcessName() == currentScreenName) {
                 displayProcessScreen(p);
@@ -176,29 +216,66 @@ void handleProcessScreenCommands(const string& cmd, const string& currentScreenN
             }
         }
         // cout << "Finished!\n\n";
-    } else {
+    } 
+    
+    else {
         cout << "Only 'exit' and 'process-smi' commands are allowed inside a process screen.\n\n";
     }
 }
 
-void displayProcessScreen(shared_ptr<Process> newProcess) {
-    cout << "\n=====================================================\n";
-    cout << "                  PROCESS CONSOLE SCREEN             \n";
-    cout << "=====================================================\n";
-    cout << "Process name: " << newProcess->getProcessName() << "\n";
-    cout << "ID: " << newProcess->getProcessNo() << "\n";
-    cout << "Logs: "<< endl;
-    cout << "(" << newProcess->getTime() << ") " << "Core:" <<newProcess->getCoreNo() << " \"Hello world from " << newProcess->getProcessName() << "!\""<< "\n\n";
-    cout << "Current instruction line: " << newProcess->getCompletedCommands() << "\n";
-    cout << "Lines of instruction: " << newProcess->getTotalNoOfCommands() << "\n";
-    cout << "=====================================================\n";
+void displayProcessScreen(const std::shared_ptr<Process>& proc) {
+    std::string logsDir = "processLogs";
+    std::string logFilePath = logsDir + "/" + proc->getProcessName() + ".txt";
+
+    std::cout << "\n=====================================================\n";
+    setColor(0x02); //color green
+    std::cout << "                  PROCESS CONSOLE SCREEN             \n";
+    setColor(0x07); // default
+    std::cout << "=====================================================\n";
+    std::cout << "Process name: " << proc->getProcessName() << "\n";
+    std::cout << "ID: " << ORANGE << proc->getProcessNo() << RESET << "\n";
+    std::cout << "Logs:\n";
+
+    // ✅ Read and print log file
+    std::ifstream file(logFilePath);
+    if (file.is_open()) {
+        std::string line;
+        bool skipHeader = true;
+        while (std::getline(file, line)) {
+            // Skip first 2 lines (name + Logs:)
+            if (skipHeader && (line.find("Logs:") != std::string::npos)) {
+                skipHeader = false;
+                continue;
+            }
+            if (!skipHeader) {
+                std::cout << line << "\n";
+            }
+        }
+        file.close();
+    } else {
+        std::cout << "No logs available yet.\n";
+    }
+
+    std::cout << "\n";
+
+    // ✅ Progress / Completion message
+    if (proc->isFinished()) {
+        std::cout << ORANGE << "Finished!" << RESET << "\n";
+    } else {
+        std::cout << "Current instruction line: " << ORANGE << proc->getCompletedCommands() << RESET << "\n";
+        std::cout << "Lines of instruction: " << ORANGE << proc->getTotalNoOfCommands() << RESET << "\n";
+    }
+
+    std::cout << "=====================================================\n";
 }
+
 
 void setColor( unsigned char color ){
 	SetConsoleTextAttribute( GetStdHandle( STD_OUTPUT_HANDLE ), color );
 }
 
 void printLastUpdated() {
+    // TODO: consider all cpp related files
     namespace fs = std::filesystem;
 
     std::string path = (fs::current_path() / "main.cpp").string();
@@ -267,19 +344,131 @@ pair<string, vector<string>> parseCommand(const string& input) {
 }
 
 void initialize() {
-	cout << "'initialize' command recognized. Doing something.\n\n";
+    // delete any existing previous logs
+    std::string logsDir = "processLogs";
+    std::string consoleLogFile = "csopesy-log.txt";
+
+    try {
+        bool isDeleted = false;
+        
+        // Delete processLogs directory if it exists
+        if (std::filesystem::exists(logsDir)) {
+            std::uintmax_t numRemoved = std::filesystem::remove_all(logsDir);
+            if (numRemoved > 0) {
+                isDeleted = true;
+            }
+        }
+        
+        // Delete console-log.txt if it exists
+        if (std::filesystem::exists(consoleLogFile)) {
+            std::filesystem::remove(consoleLogFile);
+            isDeleted = true;
+        }
+        
+        if (isDeleted) {
+            std::cout << "Deleted previous log files." << std::endl;
+        }
+        
+    } catch (const std::filesystem::filesystem_error& e) {
+        std::cerr << "Error deleting files: " << e.what() << std::endl;
+    }
+
+
+    config = loadConfig("config.txt");
+
+    std::cout << ORANGE << "[Initializing System...]\n" << RESET;
+
+    std::cout << "Loaded configuration:\n";
+    std::cout << "  Scheduler type     : " << ORANGE << config.schedulerType    << RESET << "\n";
+    std::cout << "  Number of CPUs     : " << ORANGE << config.numCPUs          << RESET << "\n";
+    std::cout << "  Quantum cycles     : " << ORANGE << config.quantumCycles    << RESET << "\n";
+    std::cout << "  Batch process freq : " << ORANGE << config.batchProcessFreq << RESET << "\n";
+    std::cout << "  Min instructions   : " << ORANGE << config.minInstructions  << RESET << "\n";
+    std::cout << "  Max instructions   : " << ORANGE << config.maxInstructions  << RESET << "\n";
+    std::cout << "  Delay per exec     : " << ORANGE << config.delaysPerExec    << RESET << "\n";
+
+    std::cout << "\nStarting scheduler...\n";
+
+    if (config.schedulerType == "fcfs") {
+        scheduler = std::make_unique<Scheduler>(config.numCPUs, config.delaysPerExec);
+        scheduler->start();
+        std::cout << ORANGE << "[FCFS Scheduler started with "
+                  << config.numCPUs << " cores]" << RESET << "\n\n";
+    } else if (config.schedulerType == "rr") {
+        std::cout << "Round Robin scheduler is not yet implemented.\n\n";
+    } else {
+        std::cout << "Invalid scheduler type in config file.\n\n";
+        return;
+    }
 }
 
+// TODO: creates X number of processes with random instruction lines
 void scheduler_start() {
 	cout << "'scheduler-start' command recognized. Doing something.\n\n";
 }
 
+// TODO: stops generating dummy processes
 void scheduler_stop() {
 	cout << "'scheduler-stop' command recognized. Doing something.\n\n";
 }
 
-void report_util() {
-	cout << "'report-util' command recognized. Doing something.\n\n";
+void report_util(const std::vector<std::shared_ptr<Process>>& processList) {
+    std::filesystem::path logPath = std::filesystem::current_path() / "csopesy-log.txt";
+    std::ofstream log("csopesy-log.txt");
+    if (!log.is_open()) {
+        std::cerr << "Failed to open csopesy-log.txt for writing.\n";
+        return;
+    }
+
+    log << "========== System Summary ============\n";
+    if (scheduler) {
+        log << "CPU Utilization: " << "100%" << "\n";  // Placeholder
+        log << "Cores Used: " << scheduler->getBusyCoreCount() << "\n";
+        log << "Cores available: " << scheduler->getAvailableCoreCount() << "\n";
+    } else {
+        log << "Scheduler not running.\n";
+    }
+    log << "======================================\n";
+
+    // Running processes
+    log << "Running Processes:\n";
+    for (const auto& proc : processList) {
+        if (proc->getProcessName() == "MAIN_SCREEN") continue;
+        if (!proc->isFinished()  && proc->getCompletedCommands() > 0) {
+            log << std::left << std::setw(15) << proc->getProcessName()
+                << proc->getRawTime() << "   "
+                << "Core: " << proc->getCoreNo() << "   "
+                << proc->getCompletedCommands() << " / "
+                << proc->getTotalNoOfCommands() << "\n";
+        }
+    }
+
+    // Finished processes
+    log << "\nFinished Processes:\n";
+    for (const auto& proc : processList) {
+        if (proc->getProcessName() == "MAIN_SCREEN") continue;
+        if (proc->isFinished()) {
+            log << std::left << std::setw(15) << proc->getProcessName()
+                << proc->getRawTime() << "   "
+                << "Finished!" << "   "
+                << proc->getCompletedCommands() << " / "
+                << proc->getTotalNoOfCommands() << "\n";
+        }
+    }
+    log << "======================================\n";
+
+    log.close();
+    setColor(0x02); //color green
+    cout << "Report generated at: " << logPath << "!\n\n";
+    setColor(0x07); //default
+}
+
+void printSystemSummary() {
+    cout << "========== System Summary ============\n";
+    cout << "CPU Utilization: "    << 100 << "%\n";
+    cout << "Cores Used: "         << scheduler->getBusyCoreCount() << "\n";
+    cout << "Cores available: "    << scheduler->getAvailableCoreCount() << "\n";
+    cout << "======================================\n";
 }
 
 void printHelpMenu() {
@@ -296,6 +485,7 @@ void printHelpMenu() {
 }
 
 void handleExit() {
+    
     exit(0);
 }
 
