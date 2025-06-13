@@ -46,7 +46,7 @@ private:
     std::thread schedulerThread;
 
     //CPU TICKS
-    std::atomic<int> cpuTicks = 0;
+    
     std::thread tickThread;
 
 
@@ -60,6 +60,11 @@ public:
 
     int getBusyCoreCount() const;
     int getAvailableCoreCount() const;
+
+    std::atomic<int> cpuTicks = 0;
+    int getCpuTicks() const {
+        return cpuTicks.load();
+    }
 
 private:
     void schedulerLoop();

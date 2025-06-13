@@ -32,7 +32,7 @@ void setColor(unsigned char color);
 void header();
 pair<string, vector<string>> parseCommand(const string& input);
 void initialize();
-void scheduler_start();
+void scheduler_start(std::vector<std::shared_ptr<Process>>& processList, ConsolePanel& consolePanel);
 void scheduler_stop();
 void report_util(const std::vector<std::shared_ptr<Process>>& processList);
 void printSystemSummary();
@@ -42,9 +42,17 @@ void clear();
 void clearToProcessScreen();
 void displayProcessScreen(const std::shared_ptr<Process>& proc);
 void printLastUpdated();
+void startBatchGeneration(std::vector<std::shared_ptr<Process>>&, ConsolePanel&);
+void stopBatchGeneration();
 
 std::unique_ptr<Scheduler> scheduler;
 Config config;
+
+std::atomic<bool> isBatchGenerating = false;
+std::thread batchGeneratorThread;
+std::atomic<int> batchProcessCount = 0;
+int processCounter = 1;
+
 
 int main() {
     srand(static_cast<unsigned>(time(nullptr)));
@@ -108,7 +116,7 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
     } 
     
     else if (cmd == "scheduler-start") {
-        scheduler_start();
+        scheduler_start(processList, consolePanel);
     } 
     
     else if (cmd == "scheduler-stop") {
@@ -387,13 +395,13 @@ void initialize() {
 }
 
 // TODO: creates X number of processes with random instruction lines
-void scheduler_start() {
-	cout << "'scheduler-start' command recognized. Doing something.\n\n";
+void scheduler_start(std::vector<std::shared_ptr<Process>>& processList, ConsolePanel& consolePanel) {
+	startBatchGeneration(processList, consolePanel);
 }
 
 // TODO: stops generating dummy processes
 void scheduler_stop() {
-	cout << "'scheduler-stop' command recognized. Doing something.\n\n";
+	stopBatchGeneration();
 }
 
 void report_util(const std::vector<std::shared_ptr<Process>>& processList) {
@@ -480,4 +488,69 @@ void clear() {
 
 void clearToProcessScreen() {
 	cout << "\033c" << flush;
+}
+
+// TO DO: Test
+void startBatchGeneration(std::vector<std::shared_ptr<Process>>& processList, ConsolePanel& consolePanel) {
+    if (isBatchGenerating) {
+        std::cout << "Batch generation already running!\n\n";
+        return;
+    }
+
+    isBatchGenerating = true;
+
+    batchGeneratorThread = std::thread([&processList, &consolePanel]() {
+        int lastTick = scheduler->getCpuTicks();
+
+        while (isBatchGenerating) {
+            int currentTick = scheduler->getCpuTicks();
+
+            if (currentTick - lastTick >= config.batchProcessFreq) {
+                lastTick = currentTick;
+
+                // Generate process name
+                std::ostringstream ss;
+                ss << "p" << std::setw(2) << std::setfill('0') << processCounter++;
+                std::string procName = ss.str();
+
+                // Random instruction count
+                int total = config.minInstructions + rand() % (config.maxInstructions - config.minInstructions + 1);
+                auto newProc = std::make_shared<Process>(procName, total);
+
+                // Generate random instructions
+                auto instructions = generateRandomInstructions(total);
+                for (const auto& instr : instructions)
+                    newProc->addInstruction(instr);
+
+                processList.push_back(newProc);
+                scheduler->addProcess(newProc);
+
+                // Create console screen
+                int dummyCurr = rand() % 100;
+                auto procConsole = std::make_shared<Console>(procName, dummyCurr, total, newProc->getProcessNo());
+                consolePanel.addConsolePanel(procConsole);
+
+                batchProcessCount++;
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    });
+
+    std::cout << "Started batch process generation.\n\n";
+}
+
+void stopBatchGeneration() {
+    if (!isBatchGenerating) {
+        std::cout << "No batch generation is running.\n\n";
+        return;
+    }
+
+    isBatchGenerating = false;
+
+    if (batchGeneratorThread.joinable())
+        batchGeneratorThread.join();
+
+    std::cout << "Stopped batch process generation.\n\n";
+    std::cout << "Total processes generated: " << batchProcessCount << "\n\n";
 }
