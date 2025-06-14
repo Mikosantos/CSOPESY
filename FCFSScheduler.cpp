@@ -8,6 +8,7 @@ FCFSScheduler::~FCFSScheduler() {
     stop();
 }
 
+// Start the scheduler and initialize CPU cores
 void FCFSScheduler::start() {
     running = true;
 
@@ -27,6 +28,7 @@ void FCFSScheduler::start() {
     });
 }
 
+// Stop the scheduler and join all threads
 void FCFSScheduler::stop() {
     running = false;
 
@@ -42,11 +44,13 @@ void FCFSScheduler::stop() {
     if (tickThread.joinable()) tickThread.join();
 }
 
+// Add a process to the ready queue
 void FCFSScheduler::addProcess(const std::shared_ptr<Process>& proc) {
     std::lock_guard<std::mutex> lock(queueMutex);
     readyQueue.push(proc);
 }
 
+// Assigns processes to CPU cores (not busy) in a First-Come, First-Served manner
 void FCFSScheduler::schedulerLoop() {
     while (running) {
         for (int i = 0; i < coreCount; ++i) {
@@ -75,6 +79,7 @@ void FCFSScheduler::schedulerLoop() {
     }
 }
 
+// The core worker function that executes assigned processes 
 void FCFSScheduler::coreWorker(int coreId) {
     auto& core = cores[coreId];
 
@@ -90,13 +95,15 @@ void FCFSScheduler::coreWorker(int coreId) {
         lock.unlock();
 
         while (running && proc->getCompletedCommands() < proc->getTotalNoOfCommands()) {
+            // Simulate execution delay from SLEEP instruction
             if (proc->isSleeping(cpuTicks.load())) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
                 continue;
             }
 
             proc->executeInstruction(coreId, cpuTicks.load());
 
+            // Simulate execution delay from delayPerExec
             int startTick = cpuTicks.load();
             while (running && (cpuTicks.load() - startTick < delayPerExec)) {
                 std::this_thread::sleep_for(std::chrono::microseconds(50));
@@ -110,20 +117,3 @@ void FCFSScheduler::coreWorker(int coreId) {
         lock.unlock();
     }
 }
-
-
-// getters for printing system summary
-// int Scheduler::getBusyCoreCount() const {
-//     int count = 0;
-//     for (const auto& core : cores) {
-//         std::lock_guard<std::mutex> lock(core->lock);
-//         if (core->busy) {
-//             count++;
-//         }
-//     }
-//     return count;
-// }
-
-// int Scheduler::getAvailableCoreCount() const {
-//     return coreCount - getBusyCoreCount();
-// }

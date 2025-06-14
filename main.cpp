@@ -403,15 +403,15 @@ void initialize() {
     }
 }
 
-// TODO: creates X number of processes with random instruction lines
+// TEST
 void scheduler_start(std::vector<std::shared_ptr<Process>>& processList, ConsolePanel& consolePanel) {
 	startBatchGeneration(processList, consolePanel);
 }
 
-// TODO: stops generating dummy processes
 void scheduler_stop() {
 	stopBatchGeneration();
 }
+//
 
 void report_util(const std::vector<std::shared_ptr<Process>>& processList) {
     std::filesystem::path logPath = std::filesystem::current_path() / "csopesy-log.txt";
@@ -466,7 +466,7 @@ void report_util(const std::vector<std::shared_ptr<Process>>& processList) {
 
 void printSystemSummary() {
     cout << "========== System Summary ============\n";
-    cout << "CPU Utilization: "    << 100 << "%\n";
+    cout << "CPU Utilization: "    << (scheduler->getBusyCoreCount() / (scheduler->getAvailableCoreCount() + scheduler->getBusyCoreCount())) * 100 << "%\n";
     cout << "Cores Used: "         << scheduler->getBusyCoreCount() << "\n";
     cout << "Cores available: "    << scheduler->getAvailableCoreCount() << "\n";
     cout << "======================================\n";

@@ -20,12 +20,11 @@ Process::Process(std::string& pName, int totalCom)
     setFinished(false);
 };
 
-//TODO
-void Process::displayScreen(){
+// not sure but i think this is not needed
+// consolePanel is the one that displays the screen
+// void Process::displayScreen() {}
 
-}
-
-//getters
+//getters ---------------------------------------------------
 std::string Process::getTime() {
     auto now = std::chrono::system_clock::to_time_t(time);
     std::tm local_time;
@@ -100,6 +99,7 @@ std::string Process::getRawTime() const {
 std::string Process::getProcessName(){
     return this->processName;
 }
+
 int Process::getTotalNoOfCommands(){
     return this->totalNoOfCommands;
 }
@@ -120,7 +120,7 @@ bool Process::isFinished() {
     return finished;
 }
 
-//setters
+//setters ----------------------------------------------------
 void Process::setProcessName(const std::string& name){
     processName = name;
 }
@@ -141,35 +141,7 @@ void Process::setFinished(bool fin) {
     finished = fin;
 }
 
-// instruction
-std::string processTimeStamp() {
-    auto now = std::chrono::system_clock::now();
-    std::time_t now_c = std::chrono::system_clock::to_time_t(now);
-    std::tm local_time;
-    localtime_s(&local_time, &now_c);
-
-    std::ostringstream timestamp;
-    timestamp << "("
-              << std::setw(2) << std::setfill('0') << local_time.tm_mon + 1 << "/"
-              << std::setw(2) << std::setfill('0') << local_time.tm_mday << "/"
-              << (local_time.tm_year + 1900) << " ";
-
-    int hour = local_time.tm_hour;
-    std::string ampm = "AM";
-    if (hour >= 12) {
-        ampm = "PM";
-        if (hour > 12) hour -= 12;
-    }
-    if (hour == 0) hour = 12;
-
-    timestamp << std::setw(2) << std::setfill('0') << hour << ":"
-              << std::setw(2) << std::setfill('0') << local_time.tm_min << ":"
-              << std::setw(2) << std::setfill('0') << local_time.tm_sec << " "
-              << ampm << ")";
-
-    return timestamp.str();
-}
-
+// INSTRUCTION RELATED FUNCTIONS ---------------------------------------------------
 void Process::addInstruction(const Instruction& instr) {
     instructions.push_back(instr);
 }
@@ -179,47 +151,93 @@ bool Process::isSleeping(int currentTick) const {
 }
 
 bool Process::executeInstruction(int coreId, int currentTick) {
-    if (instructionPointer >= instructions.size()) return false;
+    Instruction instr;
 
-    const Instruction& instr = instructions[instructionPointer];
+    // Handle FOR loop stack
+    if (!loopStack.empty()) {
+        auto& loop = loopStack.back();
 
-    // Write log header
+        // Finished current iteration?
+        if (loop.pointer >= loop.instructions.size()) {
+            loop.pointer = 0;
+            loop.currentRepeat++;
+        }
+
+        // Exceeded loop repetition
+        if (loop.currentRepeat >= loop.repeatCount) {
+            loopStack.pop_back();
+            return true;
+        }
+
+        instr = loop.instructions[loop.pointer++];
+    } else {
+        if (instructionPointer >= instructions.size()) return false;
+        instr = instructions[instructionPointer++];
+    }
+
+    instr.executedTimestamp = generateCurrentTimestamp();
+    instr.executedCore = coreId;
+
+    // Write log
     std::ostringstream log;
-    log << processTimeStamp() << "   Core: " << coreId << "   ";
+    log << instr.executedTimestamp << "   Core: " << coreId << "   ";
 
     switch (instr.type) {
         case InstructionType::PRINT:
-            log << "PRINT \"Hello world from " << processName << "!\"\n";
+            log << "PRINT \"Hello world from " << processName << "!\" \n";
             break;
+
         case InstructionType::DECLARE:
-            log << "DECLARE " << instr.var1 << " = " << instr.value << "\n";
             declareVariable(instr.var1, instr.value);
+            log << "DECLARE " << instr.var1 << " = " << instr.value << "\n";
             break;
-        case InstructionType::ADD:
+
+        case InstructionType::ADD: {
+            uint16_t val2 = instr.var2IsImmediate ? instr.var2ImmediateValue : getVariable(instr.var2);
+            uint16_t val3 = instr.var3IsImmediate ? instr.var3ImmediateValue : getVariable(instr.var3);
+
+            setVariable(instr.var1, val2 + val3);
+
             log << "ADD " << instr.var1 << " = "
-                << instr.var2 << "/" << getVariable(instr.var2) << " + "
-                << instr.var3 << "/" << getVariable(instr.var3) << "\n";
-            setVariable(instr.var1, getVariable(instr.var2) + getVariable(instr.var3));
+                << (instr.var2IsImmediate ? std::to_string(val2) : instr.var2 + "/" + std::to_string(val2))
+                << " + "
+                << (instr.var3IsImmediate ? std::to_string(val3) : instr.var3 + "/" + std::to_string(val3))
+                << "\n";
             break;
-        case InstructionType::SUBTRACT:
+        }
+
+        case InstructionType::SUBTRACT: {
+            uint16_t val2 = instr.var2IsImmediate ? instr.var2ImmediateValue : getVariable(instr.var2);
+            uint16_t val3 = instr.var3IsImmediate ? instr.var3ImmediateValue : getVariable(instr.var3);
+
+            setVariable(instr.var1, val2 - val3);
+
             log << "SUBTRACT " << instr.var1 << " = "
-                << instr.var2 << "/" << getVariable(instr.var2) << " - "
-                << instr.var3 << "/" << getVariable(instr.var3) << "\n";
-            setVariable(instr.var1, getVariable(instr.var2) - getVariable(instr.var3));
+                << (instr.var2IsImmediate ? std::to_string(val2) : instr.var2 + "/" + std::to_string(val2))
+                << " - "
+                << (instr.var3IsImmediate ? std::to_string(val3) : instr.var3 + "/" + std::to_string(val3))
+                << "\n";
             break;
+        }
+        
         case InstructionType::SLEEP:
-            log << "SLEEP for " << static_cast<int>(instr.sleepTicks) << " ticks" << "\n";
             setSleepUntil(currentTick + instr.sleepTicks);
+            log << "SLEEP for " << (int)instr.sleepTicks << " ticks \n";
+            break;
+
+        case InstructionType::FOR:
+            if (!instr.loopInstructions.empty() && instr.loopRepeat > 0) {
+                loopStack.push_back({instr.loopInstructions, instr.loopRepeat, 0, 0});
+                log << "FOR loop start x" << instr.loopRepeat << "\n";
+            } else {
+                log << "FOR loop invalid \n";
+            }
             break;
     }
 
     appendLogLine(log.str());
-
-
-    // Update internal state
-    instructionPointer++;
+    instr.hasExecuted = true;
     completedCommands++;
-
     return true;
 }
 
@@ -254,8 +272,23 @@ void Process::setSleepUntil(int tick) {
     sleepUntilTick = tick;
 }
 
-// TO DO: Implement resetInstructions to clear the instruction set and reset the pointer
+int Process::getInstructionPointer() const {
+    return instructionPointer;
+}
 
+std::vector<Instruction> Process::getInstructions() const {
+    return instructions;
+}
+
+std::vector<std::string> Process::getLogLines() const {
+    return logLines;
+}
+
+void Process::appendLogLine(const std::string& line) {
+    logLines.push_back(line);
+}
+
+// TO DO: Implement resetInstructions to clear the instruction set and reset the pointer
 // void Process::resetInstructions() {
 //     instructionPointer = 0;
 //     instructions.clear();

@@ -5,6 +5,7 @@
 RRScheduler::RRScheduler(int cores, int delay, int quantum)
     : Scheduler(cores, delay), quantumCycles(quantum) {}
 
+// Start the scheduler and initialize CPU cores
 void RRScheduler::start() {
     running = true;
 
@@ -24,6 +25,7 @@ void RRScheduler::start() {
     });
 }
 
+// Stop the scheduler and join all threads
 void RRScheduler::stop() {
     running = false;
 
@@ -39,11 +41,13 @@ void RRScheduler::stop() {
     if (tickThread.joinable()) tickThread.join();
 }
 
+// Add a process to the ready queue
 void RRScheduler::addProcess(const std::shared_ptr<Process>& proc) {
     std::lock_guard<std::mutex> lock(queueMutex);
     readyQueue.push(proc);
 }
 
+// Assigns processes to CPU cores (not busy) in a Round Robin manner
 void RRScheduler::schedulerLoop() {
     while (running) {
         for (int i = 0; i < coreCount; ++i) {
@@ -72,6 +76,7 @@ void RRScheduler::schedulerLoop() {
     }
 }
 
+// Worker function for each CPU core (Round Robin execution)
 void RRScheduler::coreWorker(int coreId) {
     auto& core = cores[coreId];
 
@@ -117,7 +122,7 @@ void RRScheduler::coreWorker(int coreId) {
         core->assignedProcess = nullptr;
         core->busy = false;
         lock.unlock();
-        proc->setCoreNum(-1);
+        proc->setCoreNum(-1); //deassign core
     }
 }
 
