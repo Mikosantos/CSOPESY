@@ -129,7 +129,7 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
         report_util(processList);
     } 
     
-    else if (cmd == "screen" && args.size() >= 1 && args[0] == "-ls") {
+    else if (cmd == "screen" && args.size() == 1 && args[0] == "-ls") {
         printSystemSummary();
         consolePanel.listProcesses(processList);
     } 
