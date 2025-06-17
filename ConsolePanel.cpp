@@ -36,7 +36,7 @@ ConsolePanel::ConsolePanel(){
 }
 
 
-//getters
+// getters -----------------------------------------------------------
 std::shared_ptr<Console> ConsolePanel::getCurrentScreen(){
     return ConsolePanel::curPanel;
 }
@@ -49,11 +49,15 @@ std::vector<std::shared_ptr<Console>> ConsolePanel::getConsolePanels(){
     return ConsolePanel::consolePanels;
 }
 
-//setters
+// setters -----------------------------------------------------------
+
+// This allows for the switching of the current screen to a different console panel (screen process)
+// This is used when the user wants to view a specific process screen (screen -r <process_name>).
 void ConsolePanel::setCurrentScreen(std::shared_ptr<Console> screenPanel){
     ConsolePanel::curPanel = screenPanel;
 }
 
+// This function lists all the processes in the system, both running and finished.
 void ConsolePanel::listProcesses(const std::vector<std::shared_ptr<Process>>& processes) {
     std::cout << "Running Processes: \n";
 
@@ -95,7 +99,7 @@ void ConsolePanel::listProcesses(const std::vector<std::shared_ptr<Process>>& pr
     std::cout << "======================================\n\n";
 }
 
-
+// This function adds a new console panel (screen) to the list of console panels.
 void ConsolePanel::addConsolePanel(std::shared_ptr<Console> screenPanel){
     consolePanels.push_back(screenPanel);
 }
