@@ -187,7 +187,7 @@ bool Process::executeInstruction(int coreId, int currentTick) {
         case InstructionType::PRINT:            
             if (fromMainList) { 
                 log << instr.executedTimestamp << "   Core: " << coreId << "   ";
-                log << "PRINT \"Hello world from " << processName << "!\" \n";
+                log << "\"Hello world from " << processName << "!\" \n";
                 completedCommands++; 
             }
 
@@ -196,8 +196,8 @@ bool Process::executeInstruction(int coreId, int currentTick) {
         case InstructionType::DECLARE:
             if (fromMainList) { 
                 declareVariable(instr.var1, instr.value);
-                log << instr.executedTimestamp << "   Core: " << coreId << "   ";
-                log << "DECLARE " << instr.var1 << " = " << instr.value << "\n";
+                // log << instr.executedTimestamp << "   Core: " << coreId << "   ";
+                // log << "DECLARE " << instr.var1 << " = " << instr.value << "\n";
                 completedCommands++;
             }
 
@@ -210,12 +210,12 @@ bool Process::executeInstruction(int coreId, int currentTick) {
 
                 setVariable(instr.var1, val2 + val3);
 
-                log << instr.executedTimestamp << "   Core: " << coreId << "   ";
-                log << "ADD " << instr.var1 << " = "
-                    << (instr.var2IsImmediate ? std::to_string(val2) : instr.var2 + "/" + std::to_string(val2))
-                    << " + "
-                    << (instr.var3IsImmediate ? std::to_string(val3) : instr.var3 + "/" + std::to_string(val3))
-                    << "\n";
+                // log << instr.executedTimestamp << "   Core: " << coreId << "   ";
+                // log << "ADD " << instr.var1 << " = "
+                //     << (instr.var2IsImmediate ? std::to_string(val2) : instr.var2 + "/" + std::to_string(val2))
+                //     << " + "
+                //     << (instr.var3IsImmediate ? std::to_string(val3) : instr.var3 + "/" + std::to_string(val3))
+                //     << "\n";
 
                 completedCommands++;
             }
@@ -229,12 +229,13 @@ bool Process::executeInstruction(int coreId, int currentTick) {
                 uint16_t val3 = instr.var3IsImmediate ? instr.var3ImmediateValue : getVariable(instr.var3);
 
                 setVariable(instr.var1, val2 - val3);
-                log << instr.executedTimestamp << "   Core: " << coreId << "   ";
-                log << "SUBTRACT " << instr.var1 << " = "
-                    << (instr.var2IsImmediate ? std::to_string(val2) : instr.var2 + "/" + std::to_string(val2))
-                    << " - "
-                    << (instr.var3IsImmediate ? std::to_string(val3) : instr.var3 + "/" + std::to_string(val3))
-                    << "\n";
+
+                // log << instr.executedTimestamp << "   Core: " << coreId << "   ";
+                // log << "SUBTRACT " << instr.var1 << " = "
+                //     << (instr.var2IsImmediate ? std::to_string(val2) : instr.var2 + "/" + std::to_string(val2))
+                //     << " - "
+                //     << (instr.var3IsImmediate ? std::to_string(val3) : instr.var3 + "/" + std::to_string(val3))
+                //     << "\n";
                 
                 completedCommands++;
             }
@@ -245,8 +246,9 @@ bool Process::executeInstruction(int coreId, int currentTick) {
         case InstructionType::SLEEP:
             if (fromMainList) {
                 setSleepUntil(currentTick + instr.sleepTicks);
-                log << instr.executedTimestamp << "   Core: " << coreId << "   ";
-                log << "SLEEP for " << (int)instr.sleepTicks << " ticks \n";
+
+                // log << instr.executedTimestamp << "   Core: " << coreId << "   ";
+                // log << "SLEEP for " << (int)instr.sleepTicks << " ticks \n";
                 
                 completedCommands++;
             }
@@ -257,12 +259,13 @@ bool Process::executeInstruction(int coreId, int currentTick) {
             if (fromMainList) {
                 if (!instr.loopInstructions.empty() && instr.loopRepeat > 0) {
                     loopStack.push_back({instr.loopInstructions, instr.loopRepeat, 0, 0});
-                    log << instr.executedTimestamp << "   Core: " << coreId << "   ";
-                    log << "FOR loop start x" << instr.loopRepeat << "\n";
+
+                    // log << instr.executedTimestamp << "   Core: " << coreId << "   ";
+                    // log << "FOR loop start x" << instr.loopRepeat << "\n";
 
                     completedCommands++;
                 } else {
-                    log << "FOR loop invalid \n";
+                    // log << "FOR loop invalid \n";
                 }
             }
 
