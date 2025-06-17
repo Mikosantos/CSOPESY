@@ -9,6 +9,10 @@ RRScheduler::RRScheduler(int cores, int delay, int quantum)
 void RRScheduler::start() {
     running = true;
 
+    // Resize cores to match the number of CPU cores
+    // cores.resize(coreCount);
+
+    cores.reserve(coreCount);
     for (int i = 0; i < coreCount; ++i) {
         auto core = std::make_unique<CPUCore>();
         core->busy = false;
@@ -60,7 +64,7 @@ void RRScheduler::schedulerLoop() {
             return !readyQueue.empty() || !running;
         });
 
-        for (int i = 0; i < coreCount; ++i) {
+        for (int i = 0; i < cores.size(); ++i) {
             auto& core = cores[i];
 
             std::unique_lock<std::mutex> coreLock(core->lock);
@@ -89,50 +93,65 @@ void RRScheduler::coreWorker(int coreId) {
     auto& core = cores[coreId];
 
     while (running) {
-        std::unique_lock<std::mutex> lock(core->lock);
-        core->cv.wait(lock, [&]() {
-            return core->assignedProcess != nullptr || !running;
-        });
+        std::shared_ptr<Process> proc;
 
-        if (!running) break;
+        // Wait for an assigned process
+        {
+            std::unique_lock<std::mutex> lock(core->lock);
+            core->cv.wait(lock, [&]() {
+                return core->assignedProcess != nullptr || !running;
+            });
 
-        auto proc = core->assignedProcess;
-        core->busy = true; // Mark core busy once it has a job
-        lock.unlock();
+            if (!running) break;
+
+            proc = core->assignedProcess;
+            core->assignedProcess = nullptr;  // clear it safely inside lock
+            core->busy = true;
+        }
+
+        // DEBUGGING
+        if (!proc) {
+            std::cerr << "[WARN] Core " << coreId << " received null process!\n";
+            std::lock_guard<std::mutex> lock(core->lock);
+            core->busy = false;
+            continue;  // skip this cycle if null
+        }
+        //
 
         int executedTicks = 0;
-
         while (running && executedTicks < quantumCycles) {
             if (proc->isFinished()) break;
 
             if (proc->isSleeping(cpuTicks.load())) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
                 continue;
             }
 
             proc->executeInstruction(coreId, cpuTicks.load());
             executedTicks++;
 
-            int startTick = cpuTicks.load();
-            while (running && (cpuTicks.load() - startTick < delayPerExec)) {
-                std::this_thread::sleep_for(std::chrono::microseconds(50));
+            if (delayPerExec > 0) {
+                int startTick = cpuTicks.load();
+                while (running && (cpuTicks.load() - startTick < delayPerExec)) {
+                    std::this_thread::sleep_for(std::chrono::microseconds(50));
+                }
             }
         }
 
         if (proc->getCompletedCommands() >= proc->getTotalNoOfCommands()) {
             proc->setFinished(true);
-            // proc->setCoreNum(-1); // Unassign
         } else {
             std::lock_guard<std::mutex> qLock(queueMutex);
             readyQueue.push(proc);
-            schedulerCV.notify_one(); // Tell scheduler a process is ready
+            schedulerCV.notify_one(); // notify scheduler
         }
 
-        lock.lock();
-        core->assignedProcess = nullptr;
-        core->busy = false;
-        lock.unlock();
+        {
+            std::lock_guard<std::mutex> lock(core->lock);
+            core->busy = false;
+        }
 
-        proc->setCoreNum(-1); // Unassign
+        proc->setCoreNum(-1); // reset core number
     }
 }
+

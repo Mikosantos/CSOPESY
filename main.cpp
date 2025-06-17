@@ -549,8 +549,13 @@ void startBatchGeneration(std::vector<std::shared_ptr<Process>>& processList, Co
 
                 batchProcessCount++;
             }
-
+            
+            // check frequently even if batchProcessFreq is high
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+            // force escape
+            // if (!isBatchGenerating)
+            //     break;
         }
     });
 

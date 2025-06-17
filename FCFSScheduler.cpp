@@ -12,6 +12,7 @@ FCFSScheduler::~FCFSScheduler() {
 void FCFSScheduler::start() {
     running = true;
 
+    cores.reserve(coreCount);
     for (int i = 0; i < coreCount; ++i) {
         auto core = std::make_unique<CPUCore>();
         core->thread = std::thread(&FCFSScheduler::coreWorker, this, i);
@@ -53,7 +54,7 @@ void FCFSScheduler::addProcess(const std::shared_ptr<Process>& proc) {
 // Assigns processes to CPU cores (not busy) in a First-Come, First-Served manner
 void FCFSScheduler::schedulerLoop() {
     while (running) {
-        for (int i = 0; i < coreCount; ++i) {
+        for (int i = 0; i < cores.size(); ++i) {
             auto& core = cores[i];
             std::unique_lock<std::mutex> coreLock(core->lock);
 
