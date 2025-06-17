@@ -60,14 +60,20 @@ void ConsolePanel::listProcesses(const std::vector<std::shared_ptr<Process>>& pr
     for (const auto& proc : processes) {
         if (proc->getProcessName() == "MAIN_SCREEN") continue;
 
-        // Consider it running if not finished and still has a valid core assignment
         if (!proc->isFinished() && proc->getCoreNo() != -1) {
             std::cout << std::left << std::setw(15) << proc->getProcessName()
-                      << proc->getTime() << "   "
-                      << "Core: "   << ORANGE << proc->getCoreNo()  << RESET << "   "
-                      << ORANGE     << proc->getCompletedCommands() << RESET << BLUE << " / " << RESET
-                      << ORANGE     << proc->getTotalNoOfCommands() << RESET
-                      << "\n";
+                    << proc->getTime() << "   "
+                    << "Core: " << ORANGE << proc->getCoreNo();
+
+            // if (proc->getCoreNo() != -1)
+            //     std::cout << ORANGE << proc->getCoreNo();
+            // else
+            //     std::cout << ORANGE << "(waiting)";
+
+            std::cout << RESET << "   "
+                    << ORANGE << proc->getCompletedCommands() << RESET << BLUE << " / " << RESET
+                    << ORANGE << proc->getTotalNoOfCommands() << RESET
+                    << "\n";
         }
     }
 

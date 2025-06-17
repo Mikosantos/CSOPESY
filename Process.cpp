@@ -152,6 +152,7 @@ bool Process::isSleeping(int currentTick) const {
 
 bool Process::executeInstruction(int coreId, int currentTick) {
     Instruction instr;
+    bool fromMainList = false;
 
     // Handle FOR loop stack
     if (!loopStack.empty()) {
@@ -173,6 +174,7 @@ bool Process::executeInstruction(int coreId, int currentTick) {
     } else {
         if (instructionPointer >= instructions.size()) return false;
         instr = instructions[instructionPointer++];
+        fromMainList = true;
     }
 
     instr.executedTimestamp = generateCurrentTimestamp();
@@ -180,64 +182,95 @@ bool Process::executeInstruction(int coreId, int currentTick) {
 
     // Write log
     std::ostringstream log;
-    log << instr.executedTimestamp << "   Core: " << coreId << "   ";
 
     switch (instr.type) {
-        case InstructionType::PRINT:
-            log << "PRINT \"Hello world from " << processName << "!\" \n";
+        case InstructionType::PRINT:            
+            if (fromMainList) { 
+                log << instr.executedTimestamp << "   Core: " << coreId << "   ";
+                log << "PRINT \"Hello world from " << processName << "!\" \n";
+                completedCommands++; 
+            }
+
             break;
 
         case InstructionType::DECLARE:
-            declareVariable(instr.var1, instr.value);
-            log << "DECLARE " << instr.var1 << " = " << instr.value << "\n";
+            if (fromMainList) { 
+                declareVariable(instr.var1, instr.value);
+                log << instr.executedTimestamp << "   Core: " << coreId << "   ";
+                log << "DECLARE " << instr.var1 << " = " << instr.value << "\n";
+                completedCommands++;
+            }
+
             break;
 
-        case InstructionType::ADD: {
-            uint16_t val2 = instr.var2IsImmediate ? instr.var2ImmediateValue : getVariable(instr.var2);
-            uint16_t val3 = instr.var3IsImmediate ? instr.var3ImmediateValue : getVariable(instr.var3);
+        case InstructionType::ADD: {   
+            if (fromMainList) {
+                uint16_t val2 = instr.var2IsImmediate ? instr.var2ImmediateValue : getVariable(instr.var2);
+                uint16_t val3 = instr.var3IsImmediate ? instr.var3ImmediateValue : getVariable(instr.var3);
 
-            setVariable(instr.var1, val2 + val3);
+                setVariable(instr.var1, val2 + val3);
 
-            log << "ADD " << instr.var1 << " = "
-                << (instr.var2IsImmediate ? std::to_string(val2) : instr.var2 + "/" + std::to_string(val2))
-                << " + "
-                << (instr.var3IsImmediate ? std::to_string(val3) : instr.var3 + "/" + std::to_string(val3))
-                << "\n";
+                log << instr.executedTimestamp << "   Core: " << coreId << "   ";
+                log << "ADD " << instr.var1 << " = "
+                    << (instr.var2IsImmediate ? std::to_string(val2) : instr.var2 + "/" + std::to_string(val2))
+                    << " + "
+                    << (instr.var3IsImmediate ? std::to_string(val3) : instr.var3 + "/" + std::to_string(val3))
+                    << "\n";
+
+                completedCommands++;
+            }
+
             break;
         }
 
         case InstructionType::SUBTRACT: {
-            uint16_t val2 = instr.var2IsImmediate ? instr.var2ImmediateValue : getVariable(instr.var2);
-            uint16_t val3 = instr.var3IsImmediate ? instr.var3ImmediateValue : getVariable(instr.var3);
+            if (fromMainList) {
+                uint16_t val2 = instr.var2IsImmediate ? instr.var2ImmediateValue : getVariable(instr.var2);
+                uint16_t val3 = instr.var3IsImmediate ? instr.var3ImmediateValue : getVariable(instr.var3);
 
-            setVariable(instr.var1, val2 - val3);
+                setVariable(instr.var1, val2 - val3);
+                log << instr.executedTimestamp << "   Core: " << coreId << "   ";
+                log << "SUBTRACT " << instr.var1 << " = "
+                    << (instr.var2IsImmediate ? std::to_string(val2) : instr.var2 + "/" + std::to_string(val2))
+                    << " - "
+                    << (instr.var3IsImmediate ? std::to_string(val3) : instr.var3 + "/" + std::to_string(val3))
+                    << "\n";
+                
+                completedCommands++;
+            }
 
-            log << "SUBTRACT " << instr.var1 << " = "
-                << (instr.var2IsImmediate ? std::to_string(val2) : instr.var2 + "/" + std::to_string(val2))
-                << " - "
-                << (instr.var3IsImmediate ? std::to_string(val3) : instr.var3 + "/" + std::to_string(val3))
-                << "\n";
             break;
         }
         
         case InstructionType::SLEEP:
-            setSleepUntil(currentTick + instr.sleepTicks);
-            log << "SLEEP for " << (int)instr.sleepTicks << " ticks \n";
+            if (fromMainList) {
+                setSleepUntil(currentTick + instr.sleepTicks);
+                log << instr.executedTimestamp << "   Core: " << coreId << "   ";
+                log << "SLEEP for " << (int)instr.sleepTicks << " ticks \n";
+                
+                completedCommands++;
+            }
+
             break;
 
         case InstructionType::FOR:
-            if (!instr.loopInstructions.empty() && instr.loopRepeat > 0) {
-                loopStack.push_back({instr.loopInstructions, instr.loopRepeat, 0, 0});
-                log << "FOR loop start x" << instr.loopRepeat << "\n";
-            } else {
-                log << "FOR loop invalid \n";
+            if (fromMainList) {
+                if (!instr.loopInstructions.empty() && instr.loopRepeat > 0) {
+                    loopStack.push_back({instr.loopInstructions, instr.loopRepeat, 0, 0});
+                    log << instr.executedTimestamp << "   Core: " << coreId << "   ";
+                    log << "FOR loop start x" << instr.loopRepeat << "\n";
+
+                    completedCommands++;
+                } else {
+                    log << "FOR loop invalid \n";
+                }
             }
+
             break;
     }
 
     appendLogLine(log.str());
     instr.hasExecuted = true;
-    completedCommands++;
     return true;
 }
 

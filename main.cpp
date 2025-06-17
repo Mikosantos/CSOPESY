@@ -465,8 +465,12 @@ void report_util(const std::vector<std::shared_ptr<Process>>& processList) {
 }
 
 void printSystemSummary() {
+    int busy = scheduler->getBusyCoreCount();
+    int total = scheduler->getAvailableCoreCount() + busy;
+    double utilization = (static_cast<double>(busy) / total) * 100;
+
     cout << "========== System Summary ============\n";
-    cout << "CPU Utilization: "    << (scheduler->getBusyCoreCount() / (scheduler->getAvailableCoreCount() + scheduler->getBusyCoreCount())) * 100 << "%\n";
+    cout << "CPU Utilization: "    << utilization << "%\n";
     cout << "Cores Used: "         << scheduler->getBusyCoreCount() << "\n";
     cout << "Cores available: "    << scheduler->getAvailableCoreCount() << "\n";
     cout << "======================================\n";
@@ -531,6 +535,10 @@ void startBatchGeneration(std::vector<std::shared_ptr<Process>>& processList, Co
                 for (const auto& instr : instructions)
                     newProc->addInstruction(instr);
 
+                // DEBUGGING
+                // std::cout << "[TRACE] Enqueued: " << newProc->getProcessName() << "\n";
+                //
+
                 processList.push_back(newProc);
                 scheduler->addProcess(newProc);
 
@@ -560,6 +568,6 @@ void stopBatchGeneration() {
     if (batchGeneratorThread.joinable())
         batchGeneratorThread.join();
 
-    std::cout << "Stopped batch process generation.\n\n";
+    std::cout << "Stopped batch process generation.\n";
     std::cout << "Total processes generated: " << batchProcessCount << "\n\n";
 }

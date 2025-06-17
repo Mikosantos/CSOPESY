@@ -14,7 +14,9 @@ int Scheduler::getBusyCoreCount() const {
     int count = 0;
     for (const auto& core : cores) {
         std::lock_guard<std::mutex> lock(core->lock);
-        if (core->busy) ++count;
+        if (core->busy && core->assignedProcess != nullptr && !core->assignedProcess->isFinished()) {
+            count++;
+        }
     }
     return count;
 }
@@ -22,3 +24,4 @@ int Scheduler::getBusyCoreCount() const {
 int Scheduler::getAvailableCoreCount() const {
     return coreCount - getBusyCoreCount();
 }
+
