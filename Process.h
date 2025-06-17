@@ -86,4 +86,6 @@ class Process {
 
         // TO DO
         // void resetInstructions();
+
+        bool isRunning() const;
 };

@@ -60,7 +60,7 @@ void ConsolePanel::listProcesses(const std::vector<std::shared_ptr<Process>>& pr
     for (const auto& proc : processes) {
         if (proc->getProcessName() == "MAIN_SCREEN") continue;
 
-        if (!proc->isFinished() && proc->getCoreNo() != -1) {
+        if (proc->isRunning()) {
             std::cout << std::left << std::setw(15) << proc->getProcessName()
                     << proc->getTime() << "   "
                     << "Core: " << ORANGE << proc->getCoreNo();

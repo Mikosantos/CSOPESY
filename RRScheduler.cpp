@@ -1,16 +1,18 @@
 #include "RRScheduler.h"
 #include <chrono>
 #include <thread>
+#include <iostream>
 
 RRScheduler::RRScheduler(int cores, int delay, int quantum)
     : Scheduler(cores, delay), quantumCycles(quantum) {}
 
-// Start the scheduler and initialize CPU cores
 void RRScheduler::start() {
     running = true;
 
     for (int i = 0; i < coreCount; ++i) {
         auto core = std::make_unique<CPUCore>();
+        core->busy = false;
+        core->assignedProcess = nullptr;
         core->thread = std::thread(&RRScheduler::coreWorker, this, i);
         cores.push_back(std::move(core));
     }
@@ -25,37 +27,46 @@ void RRScheduler::start() {
     });
 }
 
-// Stop the scheduler and join all threads
 void RRScheduler::stop() {
     running = false;
 
+    schedulerCV.notify_all(); // Wake up scheduler loop
+    if (schedulerThread.joinable()) schedulerThread.join();
+
     for (auto& core : cores) {
         std::unique_lock<std::mutex> lock(core->lock);
-        core->cv.notify_all();
+        core->cv.notify_all(); // Wake up all core workers
     }
 
-    if (schedulerThread.joinable()) schedulerThread.join();
     for (auto& core : cores) {
         if (core->thread.joinable()) core->thread.join();
     }
+
     if (tickThread.joinable()) tickThread.join();
 }
 
-// Add a process to the ready queue
 void RRScheduler::addProcess(const std::shared_ptr<Process>& proc) {
-    std::lock_guard<std::mutex> lock(queueMutex);
-    readyQueue.push(proc);
+    {
+        std::lock_guard<std::mutex> lock(queueMutex);
+        readyQueue.push(proc);
+    }
+    schedulerCV.notify_one(); // Wake up scheduler thread
 }
 
-// Assigns processes to CPU cores (not busy) in a Round Robin manner
 void RRScheduler::schedulerLoop() {
+    std::unique_lock<std::mutex> schedLock(schedulerMutex);
     while (running) {
+        schedulerCV.wait(schedLock, [this]() {
+            return !readyQueue.empty() || !running;
+        });
+
         for (int i = 0; i < coreCount; ++i) {
             auto& core = cores[i];
-            std::unique_lock<std::mutex> coreLock(core->lock);
 
+            std::unique_lock<std::mutex> coreLock(core->lock);
             if (!core->busy && core->assignedProcess == nullptr) {
                 std::shared_ptr<Process> nextProc = nullptr;
+
                 {
                     std::lock_guard<std::mutex> qLock(queueMutex);
                     if (!readyQueue.empty()) {
@@ -66,17 +77,14 @@ void RRScheduler::schedulerLoop() {
 
                 if (nextProc) {
                     core->assignedProcess = nextProc;
-                    core->busy = true;
                     nextProc->setCoreNum(i);
-                    core->cv.notify_one();
+                    core->cv.notify_one(); // Tell worker to start
                 }
             }
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 }
 
-// Worker function for each CPU core (Round Robin execution)
 void RRScheduler::coreWorker(int coreId) {
     auto& core = cores[coreId];
 
@@ -89,12 +97,14 @@ void RRScheduler::coreWorker(int coreId) {
         if (!running) break;
 
         auto proc = core->assignedProcess;
+        core->busy = true; // Mark core busy once it has a job
         lock.unlock();
 
         int executedTicks = 0;
 
         while (running && executedTicks < quantumCycles) {
             if (proc->isFinished()) break;
+
             if (proc->isSleeping(cpuTicks.load())) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 continue;
@@ -109,20 +119,20 @@ void RRScheduler::coreWorker(int coreId) {
             }
         }
 
-        // Process quantum finished or process is done
         if (proc->getCompletedCommands() >= proc->getTotalNoOfCommands()) {
             proc->setFinished(true);
+            // proc->setCoreNum(-1); // Unassign
         } else {
             std::lock_guard<std::mutex> qLock(queueMutex);
             readyQueue.push(proc);
+            schedulerCV.notify_one(); // Tell scheduler a process is ready
         }
-
 
         lock.lock();
         core->assignedProcess = nullptr;
         core->busy = false;
         lock.unlock();
-        proc->setCoreNum(-1); //deassign core
+
+        proc->setCoreNum(-1); // Unassign
     }
 }
-

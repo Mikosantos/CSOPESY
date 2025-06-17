@@ -328,3 +328,6 @@ void Process::appendLogLine(const std::string& line) {
 //     variables.clear();
 // }
 
+bool Process::isRunning() const {
+    return !finished && coreNum != -1;
+}
