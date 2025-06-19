@@ -1,10 +1,22 @@
 #pragma once 
+#include "Instruction.h"
+#include "InstructionUtils.h"
 
+#include <unordered_map>
 #include <string>
 #include <fstream>
 #include <chrono>
 
 class Process {
+    
+    struct LoopContext {
+        std::vector<Instruction> instructions;
+        int repeatCount;
+        int currentRepeat;
+        int pointer;
+    };
+    std::vector<LoopContext> loopStack;
+    
     private:
         std::string processName;
         int totalNoOfCommands;
@@ -17,6 +29,15 @@ class Process {
         bool finished = false;
 
         static int NextProcessNum;
+
+        // for instruction
+        std::vector<Instruction> instructions;
+        std::unordered_map<std::string, uint16_t> variables;
+
+        int instructionPointer = 0;
+        int sleepUntilTick = -1;
+
+        std::vector<std::string> logLines;
 
     public:
         Process(std::string& pName, int totalCom);
@@ -43,5 +64,28 @@ class Process {
         void setFinished(bool fin);
 
         //Auxilary 
-        void displayScreen();
+        // void displayScreen();
+
+        // instruction
+        void addInstruction(const Instruction& instr);
+        bool executeInstruction(int coreId, int currentTick);
+        bool isSleeping(int currentTick) const;
+
+        void declareVariable(const std::string& name, uint16_t value = 0);
+        uint16_t getVariable(const std::string& name) const;
+        void setVariable(const std::string& name, uint16_t value);
+
+        const Instruction& getCurrentInstruction() const;
+        void advanceInstructionPointer();
+        void setSleepUntil(int tick);
+ 
+        int getInstructionPointer() const;
+        std::vector<Instruction> getInstructions() const;
+        std::vector<std::string> getLogLines() const;
+        void appendLogLine(const std::string& line);
+
+        // TO DO
+        // void resetInstructions();
+
+        bool isRunning() const;
 };
