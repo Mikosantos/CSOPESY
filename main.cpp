@@ -95,7 +95,10 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
 
     if (cmd == "exit") {
         notShuttingDown = false;
-        scheduler->stop();
+
+        if(scheduler != nullptr)
+            scheduler->stop();
+        
         handleExit();
     } 
     
@@ -490,7 +493,6 @@ void printHelpMenu() {
 }
 
 void handleExit() {
-    
     exit(0);
 }
 
