@@ -36,7 +36,7 @@ ConsolePanel::ConsolePanel(){
 }
 
 
-//getters
+// getters -----------------------------------------------------------
 std::shared_ptr<Console> ConsolePanel::getCurrentScreen(){
     return ConsolePanel::curPanel;
 }
@@ -49,46 +49,57 @@ std::vector<std::shared_ptr<Console>> ConsolePanel::getConsolePanels(){
     return ConsolePanel::consolePanels;
 }
 
-//setters
+// setters -----------------------------------------------------------
+
+// This allows for the switching of the current screen to a different console panel (screen process)
+// This is used when the user wants to view a specific process screen (screen -r <process_name>).
 void ConsolePanel::setCurrentScreen(std::shared_ptr<Console> screenPanel){
     ConsolePanel::curPanel = screenPanel;
 }
 
+// This function lists all the processes in the system, both running and finished.
 void ConsolePanel::listProcesses(const std::vector<std::shared_ptr<Process>>& processes) {
-    
     std::cout << "Running Processes: \n";
-    //if not finished
+
     for (const auto& proc : processes) {
         if (proc->getProcessName() == "MAIN_SCREEN") continue;
 
-        if(!proc->isFinished() && proc->getCompletedCommands() > 0) {
+        if (proc->isRunning()) {
             std::cout << std::left << std::setw(15) << proc->getProcessName()
-                  << proc->getTime() << "   "
-                  << "Core: "   << ORANGE << proc->getCoreNo()  << RESET << "   "
-                  << ORANGE     << proc->getCompletedCommands() << RESET << BLUE << " / " << RESET
-                  << ORANGE     << proc->getTotalNoOfCommands() << RESET
-                  << "\n";
-        } 
+                    << proc->getTime() << "   "
+                    << "Core: " << ORANGE << proc->getCoreNo();
+
+            // if (proc->getCoreNo() != -1)
+            //     std::cout << ORANGE << proc->getCoreNo();
+            // else
+            //     std::cout << ORANGE << "(waiting)";
+
+            std::cout << RESET << "   "
+                    << ORANGE << proc->getCompletedCommands() << RESET << BLUE << " / " << RESET
+                    << ORANGE << proc->getTotalNoOfCommands() << RESET
+                    << "\n";
+        }
     }
 
     std::cout << "\nFinished Processes: \n";
-    //if finished
+
     for (const auto& proc : processes) {
         if (proc->getProcessName() == "MAIN_SCREEN") continue;
 
-        if(proc->isFinished()) {
+        if (proc->isFinished()) {
             std::cout << std::left << std::setw(15) << proc->getProcessName()
-                  << proc->getTime()                            << "   "
-                  << "Finished!"                                << RESET << "   "
-                  << ORANGE     << proc->getCompletedCommands() << RESET << BLUE << " / " << RESET
-                  << ORANGE     << proc->getTotalNoOfCommands() << RESET
-                  << "\n";
-        } 
+                      << proc->getTime()                            << "   "
+                      << "Finished!"                                << RESET << "   "
+                      << ORANGE     << proc->getCompletedCommands() << RESET << BLUE << " / " << RESET
+                      << ORANGE     << proc->getTotalNoOfCommands() << RESET
+                      << "\n";
+        }
     }
 
     std::cout << "======================================\n\n";
 }
 
+// This function adds a new console panel (screen) to the list of console panels.
 void ConsolePanel::addConsolePanel(std::shared_ptr<Console> screenPanel){
     consolePanels.push_back(screenPanel);
 }

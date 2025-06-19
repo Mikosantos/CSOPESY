@@ -14,12 +14,21 @@ enum class InstructionType {
 
 struct Instruction {
     InstructionType type;
+    bool hasExecuted = false;
+    int executedCore = -1;
+    std::string executedTimestamp;
 
-    // For PRINT and message-based instructions
+    // For PRINT
     std::string message; // default "Helo world from process_name!"
 
     // For variable operations (ADD, SUBTRACT)
     std::string var1, var2, var3;
+
+     // Optional values (if var2/var3 is an immediate number/random number)
+    bool var2IsImmediate = false;
+    bool var3IsImmediate = false;
+    uint16_t var2ImmediateValue = 0;
+    uint16_t var3ImmediateValue = 0;
 
     // For DECLARE
     uint16_t value = 0;
@@ -28,6 +37,7 @@ struct Instruction {
     uint8_t sleepTicks = 0;
 
     // For FOR loop
-    std::vector<Instruction> loopBody;
-    int repeatCount = 0;
+    std::vector<Instruction> loopInstructions;
+    int loopRepeat = 0;
 };
+

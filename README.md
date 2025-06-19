@@ -1,4 +1,4 @@
-Note: to run **"Process"** branch using run/debug button in VSCode, change args in tasks.json to the following:
+Note: to run **"RoundRobin"** branch using run/debug button in VSCode, change args in tasks.json to the following:
 
 ```bash
 "args": [
@@ -9,6 +9,8 @@ Note: to run **"Process"** branch using run/debug button in VSCode, change args 
   "${workspaceFolder}/Process.cpp",
   "${workspaceFolder}/scheduler.cpp",
   "${workspaceFolder}/Config.cpp",
+  "${workspaceFolder}/FCFSScheduler.cpp",
+  "${workspaceFolder}/RRScheduler.cpp",
   "-o",
   "${fileDirname}\\${fileBasenameNoExtension}.exe"
 ],

@@ -1,72 +1,49 @@
 #pragma once
 
+#include "Process.h"
 #include <vector>
 #include <queue>
+#include <memory>
 #include <thread>
 #include <mutex>
 #include <atomic>
-#include <memory>
 #include <condition_variable>
-#include "Process.h"
 
 class Scheduler {
-private:
-    struct CPUCore {
-        std::thread thread;
-        std::mutex lock;
-        std::condition_variable cv;
-        std::shared_ptr<Process> assignedProcess = nullptr;
-        bool busy = false;
-
-        // generates a default constructor and destructor
-        // to help with memory management
-        CPUCore() = default;
-        ~CPUCore() = default;
-    };
-
-    // List of CPU cores; each core has its own thread and can run a process independently
-    std::vector<std::unique_ptr<CPUCore>> cores;
-
-    // Ready queue for processes waiting to be executed
-    std::queue<std::shared_ptr<Process>> readyQueue;
-
-    // Mutex to protect access to the ready queue
-    // This is necessary to ensure thread safety when multiple threads access the queue
-    std::mutex queueMutex;
-
-    // Atomic flag to indicate if the scheduler is running
-    // atomic is used to ensure that the running state can be checked and modified safely across multiple threads
-    std::atomic<bool> running = false;
-
-    // Number of CPU cores available for scheduling; this is set during initialization and determines how many threads will be created
+protected:
     int coreCount;
     int delayPerExec;
+    std::atomic<bool> running{false};
 
-    // Thread that runs the scheduler loop; this thread is responsible for checking the ready queue and assigning processes to cores
+    struct CPUCore {
+        std::thread thread;
+        std::shared_ptr<Process> assignedProcess;
+        std::mutex lock;
+        std::condition_variable cv;
+        bool busy = false;
+    };
+
+    std::vector<std::unique_ptr<CPUCore>> cores;
     std::thread schedulerThread;
-
-    //CPU TICKS
-    
     std::thread tickThread;
 
+    std::queue<std::shared_ptr<Process>> readyQueue;
+    std::mutex queueMutex;
+
+    std::atomic<int> cpuTicks{0};
 
 public:
-    Scheduler(int cores = 4, int delay = 100);
-    ~Scheduler();
+    Scheduler(int cores, int delay);
+    virtual ~Scheduler();
 
-    void start();
-    void stop();
-    void addProcess(const std::shared_ptr<Process>& proc);
+    virtual void start() = 0;
+    virtual void stop() = 0;
 
+    virtual void schedulerLoop() = 0;
+    virtual void coreWorker(int coreId) = 0;
+
+    virtual void addProcess(const std::shared_ptr<Process>& proc);
     int getBusyCoreCount() const;
     int getAvailableCoreCount() const;
-
-    std::atomic<int> cpuTicks = 0;
-    int getCpuTicks() const {
-        return cpuTicks.load();
-    }
-
-private:
-    void schedulerLoop();
-    void coreWorker(int coreId);
+    int getCPUTicks() const { return cpuTicks.load(); }
 };
