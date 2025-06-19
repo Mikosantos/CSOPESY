@@ -2,9 +2,11 @@
 #include "Console.h"
 #include "ConsolePanel.h"
 #include "Process.h"
-#include "Scheduler.h"
 #include "Config.h"
+#include "Scheduler.h"
 #include "InstructionUtils.h"
+#include "FCFSScheduler.h"
+#include "RRScheduler.h"
 
 /* Libraries */
 #include <string>
@@ -127,7 +129,7 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
         report_util(processList);
     } 
     
-    else if (cmd == "screen" && args.size() >= 1 && args[0] == "-ls") {
+    else if (cmd == "screen" && args.size() == 1 && args[0] == "-ls") {
         printSystemSummary();
         consolePanel.listProcesses(processList);
     } 
@@ -382,27 +384,34 @@ void initialize() {
     std::cout << "\nStarting scheduler...\n";
 
     if (config.schedulerType == "fcfs") {
-        scheduler = std::make_unique<Scheduler>(config.numCPUs, config.delaysPerExec);
+        scheduler = std::make_unique<FCFSScheduler>(config.numCPUs, config.delaysPerExec);
         scheduler->start();
         std::cout << ORANGE << "[FCFS Scheduler started with "
                   << config.numCPUs << " cores]" << RESET << "\n\n";
-    } else if (config.schedulerType == "rr") {
-        std::cout << "Round Robin scheduler is not yet implemented.\n\n";
-    } else {
+    } 
+    
+    else if (config.schedulerType == "rr") {
+        scheduler = std::make_unique<RRScheduler>(config.numCPUs, config.delaysPerExec, config.quantumCycles);
+        scheduler->start();
+        std::cout << ORANGE << "[RR Scheduler started with "
+                  << config.numCPUs << " cores]" << RESET << "\n\n";
+    } 
+    
+    else {
         std::cout << "Invalid scheduler type in config file.\n\n";
         return;
     }
 }
 
-// TODO: creates X number of processes with random instruction lines
+// TEST
 void scheduler_start(std::vector<std::shared_ptr<Process>>& processList, ConsolePanel& consolePanel) {
 	startBatchGeneration(processList, consolePanel);
 }
 
-// TODO: stops generating dummy processes
 void scheduler_stop() {
 	stopBatchGeneration();
 }
+//
 
 void report_util(const std::vector<std::shared_ptr<Process>>& processList) {
     std::filesystem::path logPath = std::filesystem::current_path() / "csopesy-log.txt";
@@ -456,8 +465,12 @@ void report_util(const std::vector<std::shared_ptr<Process>>& processList) {
 }
 
 void printSystemSummary() {
+    int busy = scheduler->getBusyCoreCount();
+    int total = scheduler->getAvailableCoreCount() + busy;
+    double utilization = (static_cast<double>(busy) / total) * 100;
+
     cout << "========== System Summary ============\n";
-    cout << "CPU Utilization: "    << 100 << "%\n";
+    cout << "CPU Utilization: "    << utilization << "%\n";
     cout << "Cores Used: "         << scheduler->getBusyCoreCount() << "\n";
     cout << "Cores available: "    << scheduler->getAvailableCoreCount() << "\n";
     cout << "======================================\n";
@@ -500,10 +513,10 @@ void startBatchGeneration(std::vector<std::shared_ptr<Process>>& processList, Co
     isBatchGenerating = true;
 
     batchGeneratorThread = std::thread([&processList, &consolePanel]() {
-        int lastTick = scheduler->getCpuTicks();
+        int lastTick = scheduler->getCPUTicks();
 
         while (isBatchGenerating) {
-            int currentTick = scheduler->getCpuTicks();
+            int currentTick = scheduler->getCPUTicks();
 
             if (currentTick - lastTick >= config.batchProcessFreq) {
                 lastTick = currentTick;
@@ -522,6 +535,10 @@ void startBatchGeneration(std::vector<std::shared_ptr<Process>>& processList, Co
                 for (const auto& instr : instructions)
                     newProc->addInstruction(instr);
 
+                // DEBUGGING
+                // std::cout << "[TRACE] Enqueued: " << newProc->getProcessName() << "\n";
+                //
+
                 processList.push_back(newProc);
                 scheduler->addProcess(newProc);
 
@@ -532,8 +549,13 @@ void startBatchGeneration(std::vector<std::shared_ptr<Process>>& processList, Co
 
                 batchProcessCount++;
             }
-
+            
+            // check frequently even if batchProcessFreq is high
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+            // force escape
+            // if (!isBatchGenerating)
+            //     break;
         }
     });
 
@@ -551,6 +573,6 @@ void stopBatchGeneration() {
     if (batchGeneratorThread.joinable())
         batchGeneratorThread.join();
 
-    std::cout << "Stopped batch process generation.\n\n";
+    std::cout << "Stopped batch process generation.\n";
     std::cout << "Total processes generated: " << batchProcessCount << "\n\n";
 }
