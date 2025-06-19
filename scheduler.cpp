@@ -1,4 +1,6 @@
 #include "Scheduler.h"
+#include "InstructionUtils.h"
+
 #include <iostream>
 #include <chrono>
 #include <fstream>
@@ -121,78 +123,35 @@ void Scheduler::coreWorker(int coreId) {
         auto proc = core->assignedProcess;
         lock.unlock();
 
-        // create directory for logs (if not yet exists)
-        std::string logsDir = "processLogs";
-        std::error_code err;
-
-        if (!std::filesystem::exists(logsDir)) {
-            std::filesystem::create_directory(logsDir);
-        }
-
-        // Construct file path with logs directory
-        std::string logFilePath = logsDir + "/" + proc->getProcessName() + ".txt";
-
-        // write to file
-        std::ofstream file(logFilePath, std::ios::app);
-        file << "Process name: " << proc->getProcessName() 
-             << "\nLogs: \n\n";
-
+        // execution loop for the process
         while (running && proc->getCompletedCommands() < proc->getTotalNoOfCommands()) {
-
-            // Generate current time (per instruction)
-            auto now = std::chrono::system_clock::now();
-            std::time_t now_c = std::chrono::system_clock::to_time_t(now);
-            std::tm local_time;
-            localtime_s(&local_time, &now_c);
-
-            std::ostringstream timestamp;
-            timestamp << "("
-                    << std::setw(2) << std::setfill('0') << local_time.tm_mon + 1 << "/"
-                    << std::setw(2) << std::setfill('0') << local_time.tm_mday << "/"
-                    << (local_time.tm_year + 1900) << " ";
-
-            int hour = local_time.tm_hour;
-            std::string ampm = "AM";
-            if (hour >= 12) {
-                ampm = "PM";
-                if (hour > 12) hour -= 12;
+            if (proc->isSleeping(cpuTicks.load())) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                continue;
             }
-            if (hour == 0) hour = 12;
 
-            timestamp << std::setw(2) << std::setfill('0') << hour << ":"
-                      << std::setw(2) << std::setfill('0') << local_time.tm_min << ":"
-                      << std::setw(2) << std::setfill('0') << local_time.tm_sec << " "
-                      << ampm << ")";
+            proc->executeInstruction(coreId, cpuTicks.load());
 
-            // Write full line with real-time timestamp
-            file << timestamp.str() << " Core: " << coreId << "  \"Hello world from " << proc->getProcessName() << "!\"" << std::endl;
-            file.flush();
-
-            proc->setCompletedCommands(proc->getCompletedCommands() + 1);
-            // std::this_thread::sleep_for(std::chrono::milliseconds(delayPerExec));
-
+            // Simulate delayPerExec
             int startTick = cpuTicks.load();
             while (running && (cpuTicks.load() - startTick < delayPerExec)) {
+                // std::this_thread::sleep_for(std::chrono::microseconds(50));
+            }
 
-            }
-            if (!running) {
-                break;
-            }
         }
 
         proc->setFinished(true);
-
         lock.lock();
-        core->busy = false;
         core->assignedProcess = nullptr;
+        core->busy = false;
         lock.unlock();
     }
 }
 
 
 
-// getters
 
+// getters for printing system summary
 int Scheduler::getBusyCoreCount() const {
     int count = 0;
     for (const auto& core : cores) {

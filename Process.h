@@ -1,5 +1,7 @@
 #pragma once 
+#include "Instruction.h"
 
+#include <unordered_map>
 #include <string>
 #include <fstream>
 #include <chrono>
@@ -17,6 +19,15 @@ class Process {
         bool finished = false;
 
         static int NextProcessNum;
+
+        // for instruction
+        std::vector<Instruction> instructions;
+        std::unordered_map<std::string, uint16_t> variables;
+
+        int instructionPointer = 0;
+        int sleepUntilTick = -1;
+
+        std::vector<std::string> logLines;
 
     public:
         Process(std::string& pName, int totalCom);
@@ -44,4 +55,36 @@ class Process {
 
         //Auxilary 
         void displayScreen();
+
+        // instruction
+        void addInstruction(const Instruction& instr);
+        bool executeInstruction(int coreId, int currentTick);
+        bool isSleeping(int currentTick) const;
+
+        void declareVariable(const std::string& name, uint16_t value = 0);
+        uint16_t getVariable(const std::string& name) const;
+        void setVariable(const std::string& name, uint16_t value);
+
+        // Optionally: Reset instruction pointer (for testing or reuse)
+        // void resetInstructions();
+
+        const Instruction& getCurrentInstruction() const;
+        void advanceInstructionPointer();
+        void setSleepUntil(int tick);
+
+        int getInstructionPointer() const {
+            return instructionPointer;
+        }
+
+        const std::vector<Instruction>& getInstructions() const {
+            return instructions;
+        }
+
+        const std::vector<std::string>& getLogLines() const { 
+            return logLines; 
+        }
+
+        void appendLogLine(const std::string& line) { 
+            logLines.push_back(line); 
+        }
 };

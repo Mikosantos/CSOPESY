@@ -4,6 +4,7 @@
 #include "Process.h"
 #include "Scheduler.h"
 #include "Config.h"
+#include "InstructionUtils.h"
 
 /* Libraries */
 #include <string>
@@ -31,7 +32,7 @@ void setColor(unsigned char color);
 void header();
 pair<string, vector<string>> parseCommand(const string& input);
 void initialize();
-void scheduler_start();
+void scheduler_start(std::vector<std::shared_ptr<Process>>& processList, ConsolePanel& consolePanel);
 void scheduler_stop();
 void report_util(const std::vector<std::shared_ptr<Process>>& processList);
 void printSystemSummary();
@@ -41,9 +42,17 @@ void clear();
 void clearToProcessScreen();
 void displayProcessScreen(const std::shared_ptr<Process>& proc);
 void printLastUpdated();
+void startBatchGeneration(std::vector<std::shared_ptr<Process>>&, ConsolePanel&);
+void stopBatchGeneration();
 
 std::unique_ptr<Scheduler> scheduler;
 Config config;
+
+std::atomic<bool> isBatchGenerating = false;
+std::thread batchGeneratorThread;
+std::atomic<int> batchProcessCount = 0;
+int processCounter = 1;
+
 
 int main() {
     srand(static_cast<unsigned>(time(nullptr)));
@@ -107,7 +116,7 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
     } 
     
     else if (cmd == "scheduler-start") {
-        scheduler_start();
+        scheduler_start(processList, consolePanel);
     } 
     
     else if (cmd == "scheduler-stop") {
@@ -141,8 +150,14 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
 
         clearToProcessScreen();
         auto newProc = make_shared<Process>(procName, total);
-        processList.push_back(newProc);
 
+        auto instructions = generateRandomInstructions(total);
+        for (const auto& instr : instructions) {
+            newProc->addInstruction(instr);
+        }
+
+
+        processList.push_back(newProc);
         scheduler->addProcess(newProc);
 
         // di ko pa gets
@@ -227,38 +242,25 @@ void displayProcessScreen(const std::shared_ptr<Process>& proc) {
     std::string logsDir = "processLogs";
     std::string logFilePath = logsDir + "/" + proc->getProcessName() + ".txt";
 
-    std::cout << "\n=====================================================\n";
+    cout << "\n=====================================================\n";
     setColor(0x02); //color green
-    std::cout << "                  PROCESS CONSOLE SCREEN             \n";
+    cout << "                  PROCESS CONSOLE SCREEN             \n";
     setColor(0x07); // default
-    std::cout << "=====================================================\n";
-    std::cout << "Process name: " << proc->getProcessName() << "\n";
-    std::cout << "ID: " << ORANGE << proc->getProcessNo() << RESET << "\n";
-    std::cout << "Logs:\n";
+    cout << "=====================================================\n";
+    cout << "Process name: " << proc->getProcessName() << "\n";
+    cout << "ID: " << ORANGE << proc->getProcessNo() << RESET << "\n";
+    cout << "Logs:\n\n";
 
-    // ✅ Read and print log file
-    std::ifstream file(logFilePath);
-    if (file.is_open()) {
-        std::string line;
-        bool skipHeader = true;
-        while (std::getline(file, line)) {
-            // Skip first 2 lines (name + Logs:)
-            if (skipHeader && (line.find("Logs:") != std::string::npos)) {
-                skipHeader = false;
-                continue;
-            }
-            if (!skipHeader) {
-                std::cout << line << "\n";
-            }
-        }
-        file.close();
-    } else {
-        std::cout << "No logs available yet.\n";
+    // print each instruction logs
+    const auto& logs = proc->getLogLines();
+
+    for (const auto& line : logs) {
+        std::cout << line;
     }
 
     std::cout << "\n";
 
-    // ✅ Progress / Completion message
+    // Progress / Completion message
     if (proc->isFinished()) {
         std::cout << ORANGE << "Finished!" << RESET << "\n";
     } else {
@@ -268,7 +270,6 @@ void displayProcessScreen(const std::shared_ptr<Process>& proc) {
 
     std::cout << "=====================================================\n";
 }
-
 
 void setColor( unsigned char color ){
 	SetConsoleTextAttribute( GetStdHandle( STD_OUTPUT_HANDLE ), color );
@@ -345,19 +346,10 @@ pair<string, vector<string>> parseCommand(const string& input) {
 
 void initialize() {
     // delete any existing previous logs
-    std::string logsDir = "processLogs";
     std::string consoleLogFile = "csopesy-log.txt";
 
     try {
         bool isDeleted = false;
-        
-        // Delete processLogs directory if it exists
-        if (std::filesystem::exists(logsDir)) {
-            std::uintmax_t numRemoved = std::filesystem::remove_all(logsDir);
-            if (numRemoved > 0) {
-                isDeleted = true;
-            }
-        }
         
         // Delete console-log.txt if it exists
         if (std::filesystem::exists(consoleLogFile)) {
@@ -366,7 +358,7 @@ void initialize() {
         }
         
         if (isDeleted) {
-            std::cout << "Deleted previous log files." << std::endl;
+            std::cout << "Deleted previous log files.\n\n";
         }
         
     } catch (const std::filesystem::filesystem_error& e) {
@@ -403,13 +395,13 @@ void initialize() {
 }
 
 // TODO: creates X number of processes with random instruction lines
-void scheduler_start() {
-	cout << "'scheduler-start' command recognized. Doing something.\n\n";
+void scheduler_start(std::vector<std::shared_ptr<Process>>& processList, ConsolePanel& consolePanel) {
+	startBatchGeneration(processList, consolePanel);
 }
 
 // TODO: stops generating dummy processes
 void scheduler_stop() {
-	cout << "'scheduler-stop' command recognized. Doing something.\n\n";
+	stopBatchGeneration();
 }
 
 void report_util(const std::vector<std::shared_ptr<Process>>& processList) {
@@ -496,4 +488,69 @@ void clear() {
 
 void clearToProcessScreen() {
 	cout << "\033c" << flush;
+}
+
+// TO DO: Test
+void startBatchGeneration(std::vector<std::shared_ptr<Process>>& processList, ConsolePanel& consolePanel) {
+    if (isBatchGenerating) {
+        std::cout << "Batch generation already running!\n\n";
+        return;
+    }
+
+    isBatchGenerating = true;
+
+    batchGeneratorThread = std::thread([&processList, &consolePanel]() {
+        int lastTick = scheduler->getCpuTicks();
+
+        while (isBatchGenerating) {
+            int currentTick = scheduler->getCpuTicks();
+
+            if (currentTick - lastTick >= config.batchProcessFreq) {
+                lastTick = currentTick;
+
+                // Generate process name
+                std::ostringstream ss;
+                ss << "p" << std::setw(2) << std::setfill('0') << processCounter++;
+                std::string procName = ss.str();
+
+                // Random instruction count
+                int total = config.minInstructions + rand() % (config.maxInstructions - config.minInstructions + 1);
+                auto newProc = std::make_shared<Process>(procName, total);
+
+                // Generate random instructions
+                auto instructions = generateRandomInstructions(total);
+                for (const auto& instr : instructions)
+                    newProc->addInstruction(instr);
+
+                processList.push_back(newProc);
+                scheduler->addProcess(newProc);
+
+                // Create console screen
+                int dummyCurr = rand() % 100;
+                auto procConsole = std::make_shared<Console>(procName, dummyCurr, total, newProc->getProcessNo());
+                consolePanel.addConsolePanel(procConsole);
+
+                batchProcessCount++;
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    });
+
+    std::cout << "Started batch process generation.\n\n";
+}
+
+void stopBatchGeneration() {
+    if (!isBatchGenerating) {
+        std::cout << "No batch generation is running.\n\n";
+        return;
+    }
+
+    isBatchGenerating = false;
+
+    if (batchGeneratorThread.joinable())
+        batchGeneratorThread.join();
+
+    std::cout << "Stopped batch process generation.\n\n";
+    std::cout << "Total processes generated: " << batchProcessCount << "\n\n";
 }
