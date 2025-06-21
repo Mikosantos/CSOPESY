@@ -66,12 +66,28 @@ inline Instruction makeRandomForLoop(int depth = 0) {
     return instr;
 }
 
+inline int countInstructionsInFor(const Instruction& instr) {
+    if (instr.type != InstructionType::FOR) return 0;
+
+    int count = 0;
+    for (const auto& inner : instr.loopInstructions) {
+        if (inner.type == InstructionType::FOR) {
+            count += countInstructionsInFor(inner);
+        } else {
+            count++;
+        }
+    }
+
+    return count * instr.loopRepeat;
+}
+
 // Generate random instructions for each running process
-inline std::vector<Instruction> generateRandomInstructions(int totalIns) {
+inline std::vector<Instruction> generateRandomInstructions(int targetCount) {
     std::vector<Instruction> result;
     std::vector<std::string> declaredVars;
+    int actualCount = 0;
 
-    for (int i = 0; i < totalIns; ++i) {
+    while (actualCount < targetCount) {
         Instruction instr;
         int type = rand() % 6;
 
@@ -79,10 +95,11 @@ inline std::vector<Instruction> generateRandomInstructions(int totalIns) {
             case 0: { // PRINT
                 instr.type = InstructionType::PRINT;
                 instr.message = "Hello world from process!";
-
                 if (!declaredVars.empty()) {
                     instr.var1 = declaredVars[rand() % declaredVars.size()];
                 }
+                result.push_back(instr);
+                actualCount++;
                 break;
             }
 
@@ -91,6 +108,8 @@ inline std::vector<Instruction> generateRandomInstructions(int totalIns) {
                 instr.var1 = getRandomVarName();
                 instr.value = rand() % 100;
                 declaredVars.push_back(instr.var1);
+                result.push_back(instr);
+                actualCount++;
                 break;
             }
 
@@ -98,7 +117,6 @@ inline std::vector<Instruction> generateRandomInstructions(int totalIns) {
                 instr.type = InstructionType::ADD;
                 instr.var1 = getRandomVarName();
 
-                // var2 can be a variable or immediate
                 if (!declaredVars.empty() && rand() % 2 == 0) {
                     instr.var2 = declaredVars[rand() % declaredVars.size()];
                     instr.var2IsImmediate = false;
@@ -107,7 +125,6 @@ inline std::vector<Instruction> generateRandomInstructions(int totalIns) {
                     instr.var2ImmediateValue = rand() % 100;
                 }
 
-                // var3 can be a variable or immediate
                 if (!declaredVars.empty() && rand() % 2 == 0) {
                     instr.var3 = declaredVars[rand() % declaredVars.size()];
                     instr.var3IsImmediate = false;
@@ -117,6 +134,8 @@ inline std::vector<Instruction> generateRandomInstructions(int totalIns) {
                 }
 
                 declaredVars.push_back(instr.var1);
+                result.push_back(instr);
+                actualCount++;
                 break;
             }
 
@@ -124,7 +143,6 @@ inline std::vector<Instruction> generateRandomInstructions(int totalIns) {
                 instr.type = InstructionType::SUBTRACT;
                 instr.var1 = getRandomVarName();
 
-                // var2 can be a variable or immediate
                 if (!declaredVars.empty() && rand() % 2 == 0) {
                     instr.var2 = declaredVars[rand() % declaredVars.size()];
                     instr.var2IsImmediate = false;
@@ -133,7 +151,6 @@ inline std::vector<Instruction> generateRandomInstructions(int totalIns) {
                     instr.var2ImmediateValue = rand() % 100;
                 }
 
-                // var3 can be a variable or immediate
                 if (!declaredVars.empty() && rand() % 2 == 0) {
                     instr.var3 = declaredVars[rand() % declaredVars.size()];
                     instr.var3IsImmediate = false;
@@ -143,23 +160,48 @@ inline std::vector<Instruction> generateRandomInstructions(int totalIns) {
                 }
 
                 declaredVars.push_back(instr.var1);
+                result.push_back(instr);
+                actualCount++;
                 break;
             }
 
             case 4: { // SLEEP
                 instr.type = InstructionType::SLEEP;
                 instr.sleepTicks = rand() % 10 + 1;
+                result.push_back(instr);
+                actualCount++;
                 break;
             }
 
             case 5: { // FOR
                 instr = makeRandomForLoop();
+
+                // only for counting the instructions inside the FOR loop
+                int count = countInstructionsInFor(instr);
+
+                if (actualCount + count <= targetCount) {
+                    result.push_back(instr);
+                    actualCount += count;
+                }
+                // else skip this FOR to avoid overshooting
                 break;
             }
         }
-
-        result.push_back(instr);
     }
 
     return result;
+}
+
+inline int countExpandedInstructions(const std::vector<Instruction>& instructions) {
+    int count = 0;
+
+    for (const auto& instr : instructions) {
+        if (instr.type == InstructionType::FOR) {
+            count += countExpandedInstructions(instr.loopInstructions) * instr.loopRepeat;
+        } else {
+            count++;
+        }
+    }
+
+    return count;
 }

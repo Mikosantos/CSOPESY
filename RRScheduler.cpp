@@ -120,8 +120,8 @@ void RRScheduler::schedulerLoop() {
 
                 // If a process was found, assign it to the core
                 if (nextProc) {
-                    core->assignedProcess = nextProc;
                     core->busy = true; // Mark the core as busy before notifying
+                    core->assignedProcess = nextProc;
                     nextProc->setCoreNum(i);
                     core->cv.notify_one(); // Tell worker to start
                 }
@@ -158,7 +158,7 @@ void RRScheduler::coreWorker(int coreId) {
             // If a process is assigned, take it and mark the core as busy
             proc = core->assignedProcess;
             core->assignedProcess = nullptr;  // clear it safely inside lock
-            core->busy = true; // can be removed since it is already set to true when assigned in schedulerLoop
+            // core->busy = true; // can be removed since it is already set to true when assigned in schedulerLoop
         }
 
         // DEBUGGING; In case of null process, log a warning and skip this cycle
@@ -226,11 +226,12 @@ void RRScheduler::coreWorker(int coreId) {
         {
             std::lock_guard<std::mutex> lock(core->lock);
             core->busy = false;
+            proc->setCoreNum(-1);
         }
 
         // Reset core number which means it is no longer assigned to any core
         // This means its core number is set to -1, indicating it is not currently running on any core
-        proc->setCoreNum(-1); 
+        // proc->setCoreNum(-1); 
     }
 }
 

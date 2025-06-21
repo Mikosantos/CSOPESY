@@ -102,6 +102,7 @@ std::string Process::getProcessName(){
 
 int Process::getTotalNoOfCommands(){
     return this->totalNoOfCommands;
+    // return countExpandedInstructions(instructions);
 }
 
 int Process::getCompletedCommands(){
@@ -205,26 +206,26 @@ bool Process::executeInstruction(int coreId, int currentTick) {
 
     switch (instr.type) {
         case InstructionType::PRINT:            
-            if (fromMainList) { 
+            // if (fromMainList) {
                 log << instr.executedTimestamp << "   Core: " << coreId << "   ";
                 log << "\"Hello world from " << processName << "!\" \n";
                 completedCommands++; 
-            }
+            // }
 
             break;
 
         case InstructionType::DECLARE:
-            if (fromMainList) { 
+            // if (fromMainList) { 
                 declareVariable(instr.var1, instr.value);
                 // log << instr.executedTimestamp << "   Core: " << coreId << "   ";
                 // log << "DECLARE " << instr.var1 << " = " << instr.value << "\n";
                 completedCommands++;
-            }
+            // }
 
             break;
 
         case InstructionType::ADD: {   
-            if (fromMainList) {
+            // if (fromMainList) {
                 uint16_t val2 = instr.var2IsImmediate ? instr.var2ImmediateValue : getVariable(instr.var2);
                 uint16_t val3 = instr.var3IsImmediate ? instr.var3ImmediateValue : getVariable(instr.var3);
 
@@ -238,13 +239,13 @@ bool Process::executeInstruction(int coreId, int currentTick) {
                 //     << "\n";
 
                 completedCommands++;
-            }
+            // }
 
             break;
         }
 
         case InstructionType::SUBTRACT: {
-            if (fromMainList) {
+            // if (fromMainList) {
                 uint16_t val2 = instr.var2IsImmediate ? instr.var2ImmediateValue : getVariable(instr.var2);
                 uint16_t val3 = instr.var3IsImmediate ? instr.var3ImmediateValue : getVariable(instr.var3);
 
@@ -258,36 +259,36 @@ bool Process::executeInstruction(int coreId, int currentTick) {
                 //     << "\n";
                 
                 completedCommands++;
-            }
+            // }
 
             break;
         }
         
         case InstructionType::SLEEP:
-            if (fromMainList) {
+            // if (fromMainList) {
                 setSleepUntil(currentTick + instr.sleepTicks);
 
                 // log << instr.executedTimestamp << "   Core: " << coreId << "   ";
                 // log << "SLEEP for " << (int)instr.sleepTicks << " ticks \n";
                 
                 completedCommands++;
-            }
+            // }
 
             break;
 
         case InstructionType::FOR:
-            if (fromMainList) {
+            // if (fromMainList) {
                 if (!instr.loopInstructions.empty() && instr.loopRepeat > 0) {
                     loopStack.push_back({instr.loopInstructions, instr.loopRepeat, 0, 0});
 
                     // log << instr.executedTimestamp << "   Core: " << coreId << "   ";
                     // log << "FOR loop start x" << instr.loopRepeat << "\n";
 
-                    completedCommands++;
+                    // completedCommands++;
                 } else {
                     // log << "FOR loop invalid \n";
                 }
-            }
+            // }
 
             break;
     }
