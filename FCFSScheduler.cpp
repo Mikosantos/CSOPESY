@@ -21,12 +21,12 @@ void FCFSScheduler::start() {
 
     schedulerThread = std::thread(&FCFSScheduler::schedulerLoop, this);
 
-    tickThread = std::thread([this]() {
-        while (running) {
-            cpuTicks++;
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
-    });
+    // tickThread = std::thread([this]() {
+    //     while (running) {
+    //         cpuTicks++;
+    //         std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    //     }
+    // });
 }
 
 // Stop the scheduler and join all threads
@@ -42,7 +42,7 @@ void FCFSScheduler::stop() {
     for (auto& core : cores) {
         if (core->thread.joinable()) core->thread.join();
     }
-    if (tickThread.joinable()) tickThread.join();
+    // if (tickThread.joinable()) tickThread.join();
 }
 
 // Add a process to the ready queue
@@ -96,19 +96,26 @@ void FCFSScheduler::coreWorker(int coreId) {
         lock.unlock();
 
         while (running && proc->getCompletedCommands() < proc->getTotalNoOfCommands()) {
+            int currentTick = getCoreTick(coreId);
+            
             // Simulate execution delay from SLEEP instruction
-            if (proc->isSleeping(cpuTicks.load())) {
+            if (proc->isSleeping(currentTick)) {
+                incrementCoreTick(coreId);
                 std::this_thread::sleep_for(std::chrono::milliseconds(50));
                 continue;
             }
 
-            proc->executeInstruction(coreId, cpuTicks.load());
+            // NOTE: passing currentTick for SLEEP and FOR instruction
+            proc->executeInstruction(coreId, currentTick);
 
             // Simulate execution delay from delayPerExec
-            int startTick = cpuTicks.load();
-            while (running && (cpuTicks.load() - startTick < delayPerExec)) {
-                std::this_thread::sleep_for(std::chrono::microseconds(50));
+            if (delayPerExec > 0) {
+                int startTick = getCoreTick(coreId);
+                while (running && (getCoreTick(coreId) - startTick < delayPerExec)) {
+                    std::this_thread::sleep_for(std::chrono::microseconds(50));
+                }
             }
+            incrementCoreTick(coreId);
         }
 
         proc->setFinished(true);

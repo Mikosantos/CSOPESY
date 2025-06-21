@@ -32,6 +32,9 @@ protected:
 
     std::atomic<int> cpuTicks{0};
 
+    std::vector<std::atomic<int>> coreTicks; // one tick counter per core
+    // std::atomic<int> systemTick{0};          // used for batch generation
+
 public:
     Scheduler(int cores, int delay);
     virtual ~Scheduler();
@@ -46,4 +49,26 @@ public:
     int getBusyCoreCount() const;
     int getAvailableCoreCount() const;
     int getCPUTicks() const { return cpuTicks.load(); }
+    
+    // for ticks
+    int getCoreTick(int coreId) const {
+        if (coreId >= 0 && coreId < coreTicks.size())
+            return coreTicks[coreId].load();
+        return -1;
+    }
+
+    void incrementCoreTick(int coreId) {
+        if (coreId >= 0 && coreId < coreTicks.size())
+            coreTicks[coreId]++;
+    }
+
+    // int getSystemTick() const {
+    //     return systemTick.load();
+    // }
+
+    // void incrementSystemTick() {
+    //     systemTick++;
+    // }
 };
+
+

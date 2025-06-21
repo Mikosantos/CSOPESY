@@ -27,12 +27,12 @@ void RRScheduler::start() {
 
     // Start the tick thread
     // Responsible for simulating CPU ticks
-    tickThread = std::thread([this]() {
-        while (running) {
-            cpuTicks++;
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
-    });
+    // tickThread = std::thread([this]() {
+    //     while (running) {
+    //         cpuTicks++;
+    //         std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    //     }
+    // });
 }
 
 // Stop the Round Robin scheduler
@@ -57,7 +57,7 @@ void RRScheduler::stop() {
 
     // Join the tick thread
     // This ensures that the tick thread finishes execution before the scheduler is destroyed
-    if (tickThread.joinable()) tickThread.join();
+    // if (tickThread.joinable()) tickThread.join();
 }
 
 /*
@@ -172,27 +172,31 @@ void RRScheduler::coreWorker(int coreId) {
         // Execute the assigned process for a specified number of quantum cycles (RR behavior)
         int executedTicks = 0;
         while (running && executedTicks < quantumCycles) {
+            int currentTick = getCoreTick(coreId);
+
             if (proc->isFinished()) break;
 
             // Check if the process is sleeping
             // cpuTicks.load() is used to get the current CPU ticks
-            if (proc->isSleeping(cpuTicks.load())) {
+            if (proc->isSleeping(currentTick)) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
-                continue;
+                incrementCoreTick(coreId);
+                break;
             }
 
             // Execute the instruction of the process
-            proc->executeInstruction(coreId, cpuTicks.load());
+            proc->executeInstruction(coreId, currentTick);
             executedTicks++; // Increment the executed ticks for this quantum cycle (needs checking to see if it works properly)
 
             // Delays when executing instructions
             if (delayPerExec > 0) {
-                int startTick = cpuTicks.load();
+                int startTick = currentTick;
                 // this condition will wait until the specified delay per execution is reached
                 while (running && (cpuTicks.load() - startTick < delayPerExec)) {
                     std::this_thread::sleep_for(std::chrono::microseconds(50)); 
                 }
             }
+            incrementCoreTick(coreId);
         }
 
         // After executing the quantum cycles, check if the process is finished

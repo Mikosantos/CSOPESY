@@ -470,7 +470,7 @@ void report_util(const std::vector<std::shared_ptr<Process>>& processList) {
 void printSystemSummary() {
     int busy = scheduler->getBusyCoreCount();
     int total = scheduler->getAvailableCoreCount() + busy;
-    double utilization = (static_cast<double>(busy) / total) * 100;
+    int utilization = (static_cast<double>(busy) / total) * 100;
 
     cout << "========== System Summary ============\n";
     cout << "CPU Utilization: "    << utilization << "%\n";
@@ -515,13 +515,14 @@ void startBatchGeneration(std::vector<std::shared_ptr<Process>>& processList, Co
     isBatchGenerating = true;
 
     batchGeneratorThread = std::thread([&processList, &consolePanel]() {
-        int lastTick = scheduler->getCPUTicks();
+        int localTicks = 0;
 
         while (isBatchGenerating) {
-            int currentTick = scheduler->getCPUTicks();
+            // std::this_thread::sleep_for(std::chrono::milliseconds(1)); // 1 tick = 1 ms
+            localTicks++;
 
-            if (currentTick - lastTick >= config.batchProcessFreq) {
-                lastTick = currentTick;
+            if (localTicks  >= config.batchProcessFreq) {
+                localTicks = 0;
 
                 // Generate process name
                 std::ostringstream ss;

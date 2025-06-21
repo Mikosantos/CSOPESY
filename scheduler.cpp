@@ -1,7 +1,12 @@
 #include "Scheduler.h"
 
 Scheduler::Scheduler(int cores, int delay)
-    : coreCount(cores), delayPerExec(delay) {}
+    : coreCount(cores), delayPerExec(delay),
+      coreTicks(cores) // directly initialize vector with cores default-constructed atomics
+{
+    for (int i = 0; i < coreCount; ++i)
+        coreTicks[i].store(0);  // explicitly store 0 if needed
+}
 
 Scheduler::~Scheduler() {}
 
@@ -18,7 +23,7 @@ int Scheduler::getBusyCoreCount() const {
     int count = 0;
     for (const auto& core : cores) {
         std::lock_guard<std::mutex> lock(core->lock);
-        if (core->busy && core->assignedProcess != nullptr && !core->assignedProcess->isFinished()) {
+        if (core->busy) {
             count++;
         }
     }
