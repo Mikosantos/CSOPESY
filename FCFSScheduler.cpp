@@ -109,13 +109,25 @@ void FCFSScheduler::coreWorker(int coreId) {
             proc->executeInstruction(coreId, currentTick);
 
             // Simulate execution delay from delayPerExec
+
+            // (prev)
+            // if (delayPerExec > 0) {
+            //     int startTick = currentTick;
+            //     while (running && (getCoreTick(coreId) - startTick < delayPerExec)) {
+            //         std::this_thread::sleep_for(std::chrono::microseconds(50));
+            //         incrementCoreTick(coreId);
+            //     }
+            // }
+            
+            // (new)
             if (delayPerExec > 0) {
-                int startTick = getCoreTick(coreId);
-                while (running && (getCoreTick(coreId) - startTick < delayPerExec)) {
-                    std::this_thread::sleep_for(std::chrono::microseconds(50));
+                for (int i = 0; i < delayPerExec; ++i) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                    incrementCoreTick(coreId);
                 }
+            } else {
+                incrementCoreTick(coreId);  // Only add 1 tick if no delay is set
             }
-            incrementCoreTick(coreId);
         }
 
         proc->setFinished(true);

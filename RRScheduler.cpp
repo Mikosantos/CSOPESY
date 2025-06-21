@@ -121,6 +121,7 @@ void RRScheduler::schedulerLoop() {
                 // If a process was found, assign it to the core
                 if (nextProc) {
                     core->assignedProcess = nextProc;
+                    core->busy = true; // Mark the core as busy before notifying
                     nextProc->setCoreNum(i);
                     core->cv.notify_one(); // Tell worker to start
                 }
@@ -157,7 +158,7 @@ void RRScheduler::coreWorker(int coreId) {
             // If a process is assigned, take it and mark the core as busy
             proc = core->assignedProcess;
             core->assignedProcess = nullptr;  // clear it safely inside lock
-            core->busy = true;
+            core->busy = true; // can be removed since it is already set to true when assigned in schedulerLoop
         }
 
         // DEBUGGING; In case of null process, log a warning and skip this cycle
@@ -188,15 +189,25 @@ void RRScheduler::coreWorker(int coreId) {
             proc->executeInstruction(coreId, currentTick);
             executedTicks++; // Increment the executed ticks for this quantum cycle (needs checking to see if it works properly)
 
+            // (prev)
             // Delays when executing instructions
+            // if (delayPerExec > 0) {
+            //     int startTick = currentTick;
+            //     // this condition will wait until the specified delay per execution is reached
+            //     while (running && (cpuTicks.load() - startTick < delayPerExec)) {
+            //         std::this_thread::sleep_for(std::chrono::microseconds(50)); 
+            //     }
+            // }
+
+            // (new)
             if (delayPerExec > 0) {
-                int startTick = currentTick;
-                // this condition will wait until the specified delay per execution is reached
-                while (running && (cpuTicks.load() - startTick < delayPerExec)) {
-                    std::this_thread::sleep_for(std::chrono::microseconds(50)); 
+                for (int i = 0; i < delayPerExec; ++i) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                    incrementCoreTick(coreId);
                 }
+            } else {
+                incrementCoreTick(coreId);  // Only add 1 tick if no delay is set
             }
-            incrementCoreTick(coreId);
         }
 
         // After executing the quantum cycles, check if the process is finished
