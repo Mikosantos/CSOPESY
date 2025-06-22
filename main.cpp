@@ -534,13 +534,29 @@ void startBatchGeneration(std::vector<std::shared_ptr<Process>>& processList, Co
                 auto newProc = std::make_shared<Process>(procName, total);
 
                 // Generate random instructions
-                auto instructions = generateRandomInstructions(total);
-                for (const auto& instr : instructions)
+                // auto instructions = generateRandomInstructions(total);
+                // for (const auto& instr : instructions)
+                //     newProc->addInstruction(instr);
+
+                // Generate fixed instructions
+                newProc->declareVariable("x", 0);
+                newProc->declareVariable("y", 0);
+                newProc->declareVariable("z", 0);
+
+                
+                auto fixedInstructions = generateFixedInstructions(total);
+                for (const auto& instr : fixedInstructions)
                     newProc->addInstruction(instr);
 
-                // DEBUGGING
-                // std::cout << "[TRACE] Enqueued: " << newProc->getProcessName() << "\n";
-                //
+                // use generateRandomInstructions(total - total of fixed instructions) to reach total instructions count
+                // Calculate how many random instructions to generate to reach total
+                int randomCount = total - fixedInstructions.size();
+                if (randomCount > 0) {
+                    auto randomInstructions = generateRandomInstructions(randomCount);
+                    for (const auto& instr : randomInstructions)
+                        newProc->addInstruction(instr);
+                }
+
 
                 processList.push_back(newProc);
                 scheduler->addProcess(newProc);

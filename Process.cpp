@@ -208,7 +208,8 @@ bool Process::executeInstruction(int coreId, int currentTick) {
         case InstructionType::PRINT:            
             // if (fromMainList) {
                 log << instr.executedTimestamp << "   Core: " << coreId << "   ";
-                log << "\"Hello world from " << processName << "!\" \n";
+                // log << "\"Hello world from " << processName << "!\" \n";
+                log << "Value from " << instr.var1 << ": " << getVariable(instr.var1) << "\n";
                 completedCommands++; 
             // }
 
