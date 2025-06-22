@@ -1,40 +1,24 @@
-# OS Emulator – Process Multiplexer & Scheduler (FCFS & RR)
+### Test 6 description:
+Perform the following changes first to your emulator prior to recording:
+1. A process created will always have a variable "x, y, z" in its symbol table with a value of 0.
+2. All processes created will have the EXACT instruction set below generated via [min-ins, max-ins]:
+• FOR([ADD (x, x, 1), PRINT("Value from: "+x), ADD (y. y. 1), PRINT("Value from: "+y), ADD (z, z, 1), PRINT("Value from: "+z)], 100)
 
-## Developers
-- @Albarracin, Clarissa  
-- @Garcia, Reina Althea  
-- @Santos, Miko  
+The parameters for your "config.txt" should be:
+num-cpu 1
+scheduler "rr"
+quantum-cycles 20
+batch-process-freq 1 
+min-ins 1000
+max-ins 1000
+delay-per-exec 0
 
-## Project Description
-This project is the **first part** of an Operating System emulator. It includes the implementation of a **process multiplexer** and a **command-line interpreter (CLI)** that allows you to:
+Expected output: For all three processes viewed, variables x,y,z should clearly show an increasing value.
 
-- **Create**, **redraw**, and **list** screen-based processes  
-- **Start** and **stop** the scheduler to stress test the system  
-- Configure the scheduler via a `config.txt` file  
-- Use two types of scheduling algorithms:  
-  - **First-Come, First-Served (FCFS)**  
-  - **Round Robin (RR)**
+- Added a new function to manage predefined instruction sequences.
 
-## Features
-- CLI-based interaction
-- Simulated screen processes
-- Process scheduling (FCFS and RR)
-- Configuration via `config.txt`
-- Stress testing through CLI commands
+Included a guide detailing the syntax for setting each instruction type (DECLARE, ADD, SUBTRACT, PRINT, SLEEP, FOR).
+[Instruction Guide.txt](https://github.com/user-attachments/files/20851871/Instruction.Guide.txt)
 
-## Configuration
-To set up the program:
 
-1. Edit the `config.txt` file to configure your scheduling preferences.
-2. Use the `initialize` command in the CLI to apply the configuration.
-
-## Compilation & Running
-To compile the program using **g++** with **C++20** support, run the following command in the terminal or command prompt:
-
-```bash
-g++ -std=c++20 main.cpp Console.cpp ConsolePanel.cpp Process.cpp Scheduler.cpp Config.cpp FCFSScheduler.cpp RRScheduler.cpp -o main.exe
-```
-To run the program:
-```bash
-main.exe
-```
+Note: No need to push this to main (test case only)
