@@ -10,7 +10,7 @@
 #include <sstream>
 #include <iostream>
 
-std::vector<Instruction> generateRandomInstructions(int totalIns);
+std::vector<Instruction> generateRandomInstructions(unsigned long long totalIns);
 
 // Generate a random variable name
 inline std::string getRandomVarName() {
@@ -66,10 +66,11 @@ inline Instruction makeRandomForLoop(int depth = 0) {
     return instr;
 }
 
-inline int countInstructionsInFor(const Instruction& instr) {
+// used to count the number of instructions inside a FOR loop
+inline unsigned long long countInstructionsInFor(const Instruction& instr) {
     if (instr.type != InstructionType::FOR) return 0;
 
-    int count = 0;
+    unsigned long long count = 0;
     for (const auto& inner : instr.loopInstructions) {
         if (inner.type == InstructionType::FOR) {
             count += countInstructionsInFor(inner);
@@ -82,10 +83,10 @@ inline int countInstructionsInFor(const Instruction& instr) {
 }
 
 // Generate random instructions for each running process
-inline std::vector<Instruction> generateRandomInstructions(int targetCount) {
+inline std::vector<Instruction> generateRandomInstructions(unsigned long long targetCount) {
     std::vector<Instruction> result;
     std::vector<std::string> declaredVars;
-    int actualCount = 0;
+    unsigned long long actualCount = 0;
 
     while (actualCount < targetCount) {
         Instruction instr;
@@ -183,7 +184,7 @@ inline std::vector<Instruction> generateRandomInstructions(int targetCount) {
                     result.push_back(instr);
                     actualCount += count;
                 }
-                // else skip this FOR to avoid overshooting
+                // else skip this FOR
                 break;
             }
         }
@@ -192,6 +193,10 @@ inline std::vector<Instruction> generateRandomInstructions(int targetCount) {
     return result;
 }
 
+/*
+    This function counts the total number of instructions in a vector of instructions,
+    including those expanded from FOR loops.
+*/
 inline int countExpandedInstructions(const std::vector<Instruction>& instructions) {
     int count = 0;
 

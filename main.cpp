@@ -148,10 +148,9 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
         }
 
         int curr = 1 + rand() % 100;
-        int total = config.minInstructions + rand() % (config.maxInstructions - config.minInstructions + 1);
+        unsigned long long total = config.minInstructions + rand() % (config.maxInstructions - config.minInstructions + 1);
         
-        // what's the difference between total and cmds?
-        int cmds = total + rand() % 100;
+        unsigned long long cmds = total + rand() % 100;
 
         clearToProcessScreen();
         auto newProc = make_shared<Process>(procName, total);
@@ -161,16 +160,17 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
             newProc->addInstruction(instr);
         }
 
-
         processList.push_back(newProc);
-        scheduler->addProcess(newProc);
 
-        // di ko pa gets
+        // can i add a sleep here ... 
+
         auto procConsole = make_shared<Console>(procName, curr, total, newProc->getProcessNo());
         consolePanel.addConsolePanel(procConsole);
         consolePanel.setCurrentScreen(procConsole);
 
         displayProcessScreen(newProc);
+
+        scheduler->addProcess(newProc);
 
     } 
     
@@ -406,7 +406,6 @@ void initialize() {
     }
 }
 
-// TEST
 void scheduler_start(std::vector<std::shared_ptr<Process>>& processList, ConsolePanel& consolePanel) {
 	startBatchGeneration(processList, consolePanel);
 }
@@ -414,7 +413,6 @@ void scheduler_start(std::vector<std::shared_ptr<Process>>& processList, Console
 void scheduler_stop() {
 	stopBatchGeneration();
 }
-//
 
 void report_util(const std::vector<std::shared_ptr<Process>>& processList) {
     std::filesystem::path logPath = std::filesystem::current_path() / "csopesy-log.txt";
@@ -505,7 +503,6 @@ void clearToProcessScreen() {
 	cout << "\033c" << flush;
 }
 
-// TO DO: Test
 void startBatchGeneration(std::vector<std::shared_ptr<Process>>& processList, ConsolePanel& consolePanel) {
     if (isBatchGenerating) {
         std::cout << "Batch generation already running!\n\n";
@@ -530,7 +527,7 @@ void startBatchGeneration(std::vector<std::shared_ptr<Process>>& processList, Co
                 std::string procName = ss.str();
 
                 // Random instruction count
-                int total = config.minInstructions + rand() % (config.maxInstructions - config.minInstructions + 1);
+                unsigned long long total = config.minInstructions + rand() % (config.maxInstructions - config.minInstructions + 1);
                 auto newProc = std::make_shared<Process>(procName, total);
 
                 // Generate random instructions
@@ -538,27 +535,19 @@ void startBatchGeneration(std::vector<std::shared_ptr<Process>>& processList, Co
                 for (const auto& instr : instructions)
                     newProc->addInstruction(instr);
 
-                // DEBUGGING
-                // std::cout << "[TRACE] Enqueued: " << newProc->getProcessName() << "\n";
-                //
-
                 processList.push_back(newProc);
-                scheduler->addProcess(newProc);
-
+                
                 // Create console screen
                 int dummyCurr = rand() % 100;
                 auto procConsole = std::make_shared<Console>(procName, dummyCurr, total, newProc->getProcessNo());
                 consolePanel.addConsolePanel(procConsole);
 
+                scheduler->addProcess(newProc);
                 batchProcessCount++;
             }
             
             // check frequently even if batchProcessFreq is high
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
-
-            // force escape
-            // if (!isBatchGenerating)
-            //     break;
         }
     });
 

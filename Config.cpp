@@ -25,11 +25,11 @@ Config loadConfig(const std::string& filePath) {  // ✅ No default here
 
         if (key == "num-cpu") config.numCPUs = std::stoi(value);
         else if (key == "scheduler") config.schedulerType = value;
-        else if (key == "quantum-cycles") config.quantumCycles = std::stoi(value);
-        else if (key == "batch-process-freq") config.batchProcessFreq = std::stoi(value);
-        else if (key == "min-ins") config.minInstructions = std::stoi(value);
-        else if (key == "max-ins") config.maxInstructions = std::stoi(value);
-        else if (key == "delays-per-exec") config.delaysPerExec = std::stoi(value);
+        else if (key == "quantum-cycles") config.quantumCycles = std::stoull(value);
+        else if (key == "batch-process-freq") config.batchProcessFreq = std::stoull(value);
+        else if (key == "min-ins") config.minInstructions = std::stoull(value);
+        else if (key == "max-ins") config.maxInstructions = std::stoull(value);
+        else if (key == "delays-per-exec") config.delaysPerExec = std::stoull(value);
     }
 
     return config;

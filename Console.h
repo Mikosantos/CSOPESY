@@ -6,19 +6,19 @@ class Console {
     private:
         std::string consoleName;
         std::string curTime;
-        int curLine;
-        int totalLines;
+        unsigned long long curLine;
+        unsigned long long totalLines;
         int processId;
         
     public: 
-        Console(std::string consoleName, int curLine, int totalLines, int processId);
+        Console(std::string consoleName, unsigned long long curLine, unsigned long long totalLines, int processId);
         std::string getConsoleName() const;
-        int getCurrentLine() const;
-        int getTotalLines() const;
+        unsigned long long getCurrentLine() const;
+        unsigned long long getTotalLines() const;
         int getProcessID() const;
 
         void setConsoleName(const std::string& name);
-        void setCurrentLine(int cLine);
-        void setTotalLines(int tLines);
+        void setCurrentLine(unsigned long long cLine);
+        void setTotalLines(unsigned long long tLines);
         void setProcessID(int pId);
 };

@@ -6,21 +6,22 @@
 #include <string>
 #include <fstream>
 #include <chrono>
+#include <mutex>
 
 class Process {
     
     struct LoopContext {
         std::vector<Instruction> instructions;
         int repeatCount;
-        int currentRepeat;
-        int pointer;
+        unsigned long long currentRepeat;
+        unsigned long long pointer;
     };
     std::vector<LoopContext> loopStack;
     
     private:
         std::string processName;
-        int totalNoOfCommands;
-        int completedCommands;
+        unsigned long long totalNoOfCommands;
+        unsigned long long completedCommands;
         int coreNum;
         int processNum;
         std::ofstream logFile;
@@ -39,6 +40,8 @@ class Process {
 
         std::vector<std::string> logLines;
 
+        mutable std::mutex coreNumMutex;
+
     public:
         Process(std::string& pName, int totalCom);
 
@@ -46,25 +49,20 @@ class Process {
         std::string getTime();
         std::string getRawTime() const;
         std::string getProcessName();
-        int getTotalNoOfCommands();
-        int getCompletedCommands();
+        unsigned long long getTotalNoOfCommands();
+        unsigned long long getCompletedCommands();
         int getCoreNo();
         int getProcessNo();
         int getNextProcessNum();
-
         bool isFinished();
         
         //Setters
         void setProcessName(const std::string& name);
-        void setTotalNoOfCommands(int tCom);
-        void setCompletedCommands(int cCom);
+        void setTotalNoOfCommands(unsigned long long tCom);
+        void setCompletedCommands(unsigned long long cCom);
         void setCoreNum(int coreNum);
         void setProcessNum(int procNum);
-
         void setFinished(bool fin);
-
-        //Auxilary 
-        // void displayScreen();
 
         // instruction
         void addInstruction(const Instruction& instr);
@@ -79,13 +77,14 @@ class Process {
         void advanceInstructionPointer();
         void setSleepUntil(int tick);
  
-        int getInstructionPointer() const;
+        unsigned long long getInstructionPointer() const;
         std::vector<Instruction> getInstructions() const;
         std::vector<std::string> getLogLines() const;
         void appendLogLine(const std::string& line);
+        // ----------------------------------------------------------
 
-        // TO DO
-        // void resetInstructions();
-
+        // to check if the process is still running
         bool isRunning() const;
+
+        bool checkIfFinished();
 };

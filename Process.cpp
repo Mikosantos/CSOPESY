@@ -20,10 +20,6 @@ Process::Process(std::string& pName, int totalCom)
     setFinished(false);
 };
 
-// not sure but i think this is not needed
-// consolePanel is the one that displays the screen
-// void Process::displayScreen() {}
-
 // getters ---------------------------------------------------
 std::string Process::getTime() {
     auto now = std::chrono::system_clock::to_time_t(time);
@@ -66,7 +62,7 @@ std::string Process::getTime() {
     return oss.str();
 }
 
-// Returns the raw time in the format (MM/DD/YYYY HH:MM:SS AM/PM) w/o colors
+// Returns the raw time in the format (MM/DD/YYYY HH:MM:SS AM/PM) w/o colors for logs
 std::string Process::getRawTime() const {
     auto now = std::chrono::system_clock::to_time_t(time);
     std::tm local_time;
@@ -100,16 +96,17 @@ std::string Process::getProcessName(){
     return this->processName;
 }
 
-int Process::getTotalNoOfCommands(){
+unsigned long long Process::getTotalNoOfCommands(){
     return this->totalNoOfCommands;
     // return countExpandedInstructions(instructions);
 }
 
-int Process::getCompletedCommands(){
+unsigned long long Process::getCompletedCommands(){
     return this->completedCommands;
 }
 
 int Process::getCoreNo(){
+    std::lock_guard<std::mutex> lock(coreNumMutex);
     return this->coreNum;
 }
 
@@ -130,15 +127,16 @@ void Process::setProcessName(const std::string& name){
     processName = name;
 }
 
-void Process::setTotalNoOfCommands(int tCom){
+void Process::setTotalNoOfCommands(unsigned long long tCom){
     totalNoOfCommands = tCom;
 }
 
-void Process::setCompletedCommands(int cCom){
+void Process::setCompletedCommands(unsigned long long cCom){
     completedCommands = cCom;
 }
 
 void Process::setCoreNum(int cNum){
+    std::lock_guard<std::mutex> lock(coreNumMutex);
     coreNum = cNum;
 }
 
@@ -151,6 +149,24 @@ void Process::setFinished(bool fin) {
 }
 
 // INSTRUCTION RELATED FUNCTIONS -------------------------------
+
+// New method to check if process is finished based on instructions and loop stack
+bool Process::checkIfFinished() {
+    // We lock coreNumMutex to synchronize access to finished and coreNum
+    std::lock_guard<std::mutex> lock(coreNumMutex);
+
+    // Finish if completed commands reached or
+    // instruction pointer is at end and no loops remain
+    if (completedCommands >= totalNoOfCommands) {
+        finished = true;
+        return true;
+    }
+    if (instructionPointer >= instructions.size() && loopStack.empty()) {
+        finished = true;
+        return true;
+    }
+    return false;
+}
 
 /*
     Adds an instruction to the process.
@@ -188,12 +204,18 @@ bool Process::executeInstruction(int coreId, int currentTick) {
         // Exceeded loop repetition
         if (loop.currentRepeat >= loop.repeatCount) {
             loopStack.pop_back();
+            // After popping, call checkIfFinished in case process done now
+            checkIfFinished();
             return true;
         }
 
         instr = loop.instructions[loop.pointer++];
     } else {
-        if (instructionPointer >= instructions.size()) return false;
+        if (instructionPointer >= instructions.size()) {
+            // No instructions left
+            checkIfFinished();
+            return false;
+        }
         instr = instructions[instructionPointer++];
         fromMainList = true;
     }
@@ -201,100 +223,57 @@ bool Process::executeInstruction(int coreId, int currentTick) {
     instr.executedTimestamp = generateCurrentTimestamp();
     instr.executedCore = coreId;
 
-    // Write log
     std::ostringstream log;
 
+    // Execute instruction and increment completedCommands for every executed instruction
     switch (instr.type) {
         case InstructionType::PRINT:            
-            // if (fromMainList) {
-                log << instr.executedTimestamp << "   Core: " << coreId << "   ";
-                log << "\"Hello world from " << processName << "!\" \n";
-                completedCommands++; 
-            // }
-
+            log << instr.executedTimestamp << "   Core: " << coreId << "   ";
+            log << "\"Hello world from " << processName << "!\" \n";
+            completedCommands++; 
             break;
 
         case InstructionType::DECLARE:
-            // if (fromMainList) { 
-                declareVariable(instr.var1, instr.value);
-                // log << instr.executedTimestamp << "   Core: " << coreId << "   ";
-                // log << "DECLARE " << instr.var1 << " = " << instr.value << "\n";
-                completedCommands++;
-            // }
-
+            declareVariable(instr.var1, instr.value);
+            completedCommands++;
             break;
 
         case InstructionType::ADD: {   
-            // if (fromMainList) {
-                uint16_t val2 = instr.var2IsImmediate ? instr.var2ImmediateValue : getVariable(instr.var2);
-                uint16_t val3 = instr.var3IsImmediate ? instr.var3ImmediateValue : getVariable(instr.var3);
-
-                setVariable(instr.var1, val2 + val3);
-
-                // log << instr.executedTimestamp << "   Core: " << coreId << "   ";
-                // log << "ADD " << instr.var1 << " = "
-                //     << (instr.var2IsImmediate ? std::to_string(val2) : instr.var2 + "/" + std::to_string(val2))
-                //     << " + "
-                //     << (instr.var3IsImmediate ? std::to_string(val3) : instr.var3 + "/" + std::to_string(val3))
-                //     << "\n";
-
-                completedCommands++;
-            // }
-
+            uint16_t val2 = instr.var2IsImmediate ? instr.var2ImmediateValue : getVariable(instr.var2);
+            uint16_t val3 = instr.var3IsImmediate ? instr.var3ImmediateValue : getVariable(instr.var3);
+            setVariable(instr.var1, val2 + val3);
+            completedCommands++;
             break;
         }
 
         case InstructionType::SUBTRACT: {
-            // if (fromMainList) {
-                uint16_t val2 = instr.var2IsImmediate ? instr.var2ImmediateValue : getVariable(instr.var2);
-                uint16_t val3 = instr.var3IsImmediate ? instr.var3ImmediateValue : getVariable(instr.var3);
-
-                setVariable(instr.var1, val2 - val3);
-
-                // log << instr.executedTimestamp << "   Core: " << coreId << "   ";
-                // log << "SUBTRACT " << instr.var1 << " = "
-                //     << (instr.var2IsImmediate ? std::to_string(val2) : instr.var2 + "/" + std::to_string(val2))
-                //     << " - "
-                //     << (instr.var3IsImmediate ? std::to_string(val3) : instr.var3 + "/" + std::to_string(val3))
-                //     << "\n";
-                
-                completedCommands++;
-            // }
-
+            uint16_t val2 = instr.var2IsImmediate ? instr.var2ImmediateValue : getVariable(instr.var2);
+            uint16_t val3 = instr.var3IsImmediate ? instr.var3ImmediateValue : getVariable(instr.var3);
+            setVariable(instr.var1, val2 - val3);
+            completedCommands++;
             break;
         }
         
         case InstructionType::SLEEP:
-            // if (fromMainList) {
-                setSleepUntil(currentTick + instr.sleepTicks);
-
-                // log << instr.executedTimestamp << "   Core: " << coreId << "   ";
-                // log << "SLEEP for " << (int)instr.sleepTicks << " ticks \n";
-                
-                completedCommands++;
-            // }
-
+            setSleepUntil(currentTick + instr.sleepTicks);
+            completedCommands++;
             break;
 
         case InstructionType::FOR:
-            // if (fromMainList) {
-                if (!instr.loopInstructions.empty() && instr.loopRepeat > 0) {
-                    loopStack.push_back({instr.loopInstructions, instr.loopRepeat, 0, 0});
-
-                    // log << instr.executedTimestamp << "   Core: " << coreId << "   ";
-                    // log << "FOR loop start x" << instr.loopRepeat << "\n";
-
-                    // completedCommands++;
-                } else {
-                    // log << "FOR loop invalid \n";
-                }
-            // }
-
+            // Push loop instructions and repetitions onto stack if valid
+            if (!instr.loopInstructions.empty() && instr.loopRepeat > 0) {
+                loopStack.push_back({instr.loopInstructions, instr.loopRepeat, 0, 0});
+                // We DO NOT increment completedCommands here because the loop body will be counted
+            }
             break;
     }
 
     appendLogLine(log.str());
     instr.hasExecuted = true;
+
+    // After executing an instruction, check if process is finished
+    checkIfFinished();
+
     return true;
 }
 
@@ -331,7 +310,7 @@ void Process::setSleepUntil(int tick) {
     sleepUntilTick = tick;
 }
 
-int Process::getInstructionPointer() const {
+unsigned long long Process::getInstructionPointer() const {
     return instructionPointer;
 }
 
@@ -356,10 +335,3 @@ void Process::appendLogLine(const std::string& line) {
 bool Process::isRunning() const {
     return !finished && coreNum != -1;
 }
-
-// TO DO: Implement resetInstructions to clear the instruction set and reset the pointer
-// void Process::resetInstructions() {
-//     instructionPointer = 0;
-//     instructions.clear();
-//     variables.clear();
-// }

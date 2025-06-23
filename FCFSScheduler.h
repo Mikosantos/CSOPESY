@@ -7,7 +7,7 @@ private:
     std::queue<std::shared_ptr<Process>> readyQueue;
 
 public:
-    FCFSScheduler(int cores, int delay);
+    FCFSScheduler(int cores, unsigned long long delay);
     ~FCFSScheduler();
 
     void start() override;

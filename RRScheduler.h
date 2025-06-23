@@ -7,12 +7,12 @@
 class RRScheduler : public Scheduler {
 private:
     std::queue<std::shared_ptr<Process>> readyQueue;
-    int quantumCycles;
+    unsigned long long quantumCycles;
     std::condition_variable schedulerCV;
     std::mutex schedulerMutex;
 
 public:
-    RRScheduler(int cores, int delay, int quantum);
+    RRScheduler(int cores, int delay, unsigned long long quantum);
 
     void start() override;
     void stop() override;
