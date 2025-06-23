@@ -163,13 +163,14 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
 
 
         processList.push_back(newProc);
-        scheduler->addProcess(newProc);
+        
 
         // di ko pa gets
         auto procConsole = make_shared<Console>(procName, curr, total, newProc->getProcessNo());
         consolePanel.addConsolePanel(procConsole);
         consolePanel.setCurrentScreen(procConsole);
 
+        scheduler->addProcess(newProc);
         displayProcessScreen(newProc);
 
     } 
@@ -559,13 +560,14 @@ void startBatchGeneration(std::vector<std::shared_ptr<Process>>& processList, Co
 
 
                 processList.push_back(newProc);
-                scheduler->addProcess(newProc);
+                
 
                 // Create console screen
                 int dummyCurr = rand() % 100;
                 auto procConsole = std::make_shared<Console>(procName, dummyCurr, total, newProc->getProcessNo());
                 consolePanel.addConsolePanel(procConsole);
 
+                scheduler->addProcess(newProc);
                 batchProcessCount++;
             }
             
