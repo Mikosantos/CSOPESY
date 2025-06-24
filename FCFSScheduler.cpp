@@ -20,13 +20,6 @@ void FCFSScheduler::start() {
     }
 
     schedulerThread = std::thread(&FCFSScheduler::schedulerLoop, this);
-
-    // tickThread = std::thread([this]() {
-    //     while (running) {
-    //         cpuTicks++;
-    //         std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    //     }
-    // });
 }
 
 // Stop the scheduler and join all threads
@@ -42,7 +35,6 @@ void FCFSScheduler::stop() {
     for (auto& core : cores) {
         if (core->thread.joinable()) core->thread.join();
     }
-    // if (tickThread.joinable()) tickThread.join();
 }
 
 // Add a process to the ready queue

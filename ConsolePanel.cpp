@@ -59,8 +59,8 @@ void ConsolePanel::setCurrentScreen(std::shared_ptr<Console> screenPanel){
 
 // This function lists all the processes in the system, both running and finished.
 void ConsolePanel::listProcesses(const std::vector<std::shared_ptr<Process>>& processes) {
+    
     std::cout << "Running Processes: \n";
-
     for (const auto& proc : processes) {
         if (proc->getProcessName() == "MAIN_SCREEN") continue;
 
@@ -68,11 +68,6 @@ void ConsolePanel::listProcesses(const std::vector<std::shared_ptr<Process>>& pr
             std::cout << std::left << std::setw(15) << proc->getProcessName()
                     << proc->getTime() << "   "
                     << "Core: " << ORANGE << proc->getCoreNo();
-
-            // if (proc->getCoreNo() != -1)
-            //     std::cout << ORANGE << proc->getCoreNo();
-            // else
-            //     std::cout << ORANGE << "(waiting)";
 
             std::cout << RESET << "   "
                     << ORANGE << proc->getCompletedCommands() << RESET << BLUE << " / " << RESET
@@ -82,7 +77,6 @@ void ConsolePanel::listProcesses(const std::vector<std::shared_ptr<Process>>& pr
     }
 
     std::cout << "\nFinished Processes: \n";
-
     for (const auto& proc : processes) {
         if (proc->getProcessName() == "MAIN_SCREEN") continue;
 
@@ -95,7 +89,6 @@ void ConsolePanel::listProcesses(const std::vector<std::shared_ptr<Process>>& pr
                       << "\n";
         }
     }
-
     std::cout << "======================================\n\n";
 }
 

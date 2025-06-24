@@ -189,7 +189,6 @@ bool Process::isSleeping(int currentTick) const {
 */
 bool Process::executeInstruction(int coreId, int currentTick) {
     Instruction instr;
-    bool fromMainList = false;
 
     // Handle FOR loop stack
     if (!loopStack.empty()) {
@@ -217,14 +216,12 @@ bool Process::executeInstruction(int coreId, int currentTick) {
             return false;
         }
         instr = instructions[instructionPointer++];
-        fromMainList = true;
     }
 
     instr.executedTimestamp = generateCurrentTimestamp();
     instr.executedCore = coreId;
 
     std::ostringstream log;
-
     // Execute instruction and increment completedCommands for every executed instruction
     switch (instr.type) {
         case InstructionType::PRINT:            
@@ -263,7 +260,7 @@ bool Process::executeInstruction(int coreId, int currentTick) {
             // Push loop instructions and repetitions onto stack if valid
             if (!instr.loopInstructions.empty() && instr.loopRepeat > 0) {
                 loopStack.push_back({instr.loopInstructions, instr.loopRepeat, 0, 0});
-                // We DO NOT increment completedCommands here because the loop body will be counted
+                // DO NOT increment completedCommands here because the loop body will be counted
             }
             break;
     }

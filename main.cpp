@@ -27,6 +27,7 @@
 
 using namespace std;
 
+// function declarations
 void handleMainScreenCommands(const string& cmd, const vector<string>& args, ConsolePanel& consolePanel, vector<shared_ptr<Process>>& processList, 
                               bool& hasInitialized, bool& notShuttingDown);
 void handleProcessScreenCommands(const string& cmd, const string& currentScreenName, const vector<shared_ptr<Process>>& processList, ConsolePanel& consolePanel);
@@ -147,10 +148,7 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
             }
         }
 
-        int curr = 1 + rand() % 100;
         unsigned long long total = config.minInstructions + rand() % (config.maxInstructions - config.minInstructions + 1);
-        
-        unsigned long long cmds = total + rand() % 100;
 
         clearToProcessScreen();
         auto newProc = make_shared<Process>(procName, total);
@@ -162,7 +160,7 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
 
         processList.push_back(newProc);
 
-        auto procConsole = make_shared<Console>(procName, curr, total, newProc->getProcessNo());
+        auto procConsole = make_shared<Console>(procName, 0, total, newProc->getProcessNo());
         consolePanel.addConsolePanel(procConsole);
         consolePanel.setCurrentScreen(procConsole);
 
@@ -418,9 +416,13 @@ void report_util(const std::vector<std::shared_ptr<Process>>& processList) {
         return;
     }
 
+    int busy = scheduler->getBusyCoreCount();
+    int total = scheduler->getAvailableCoreCount() + busy;
+    int utilization = (static_cast<double>(busy) / total) * 100;
+
     log << "========== System Summary ============\n";
     if (scheduler) {
-        log << "CPU Utilization: " << "100%" << "\n";  // Placeholder
+        log << "CPU Utilization: " << utilization << "%\n";
         log << "Cores Used: " << scheduler->getBusyCoreCount() << "\n";
         log << "Cores available: " << scheduler->getAvailableCoreCount() << "\n";
     } else {
