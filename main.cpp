@@ -162,8 +162,6 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
 
         processList.push_back(newProc);
 
-        // can i add a sleep here ... 
-
         auto procConsole = make_shared<Console>(procName, curr, total, newProc->getProcessNo());
         consolePanel.addConsolePanel(procConsole);
         consolePanel.setCurrentScreen(procConsole);
@@ -235,7 +233,6 @@ void handleProcessScreenCommands(const string& cmd, const string& currentScreenN
                 break;
             }
         }
-        // cout << "Finished!\n\n";
     } 
     
     else {
@@ -281,7 +278,6 @@ void setColor( unsigned char color ){
 }
 
 void printLastUpdated() {
-    // TODO: consider all cpp related files
     namespace fs = std::filesystem;
 
     std::string path = (fs::current_path() / "main.cpp").string();
