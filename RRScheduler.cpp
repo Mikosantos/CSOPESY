@@ -3,8 +3,7 @@
 #include <thread>
 #include <iostream>
 
-// TODO: recheck test script, bug (sometimes shows core Num -1 in listProcesses, 
-// not sure if bc of coreWorker race condition huhu)
+// TODO: recheck test script
 
 
 // Constructor
