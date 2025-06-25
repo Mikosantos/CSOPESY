@@ -61,6 +61,26 @@ void RRScheduler::stop() {
     }
 }
 
+std::vector<std::shared_ptr<Process>> RRScheduler::getRunningProcesses() const {
+    std::vector<std::shared_ptr<Process>> result;
+
+    for (int i = 0; i < cores.size(); ++i) {
+        std::shared_ptr<Process> proc;
+
+        {
+            std::lock_guard<std::mutex> lock(cores[i]->lock);
+            proc = cores[i]->assignedProcess;
+
+            if (proc) {
+                result.push_back(proc);
+            }
+        }
+    }
+
+    return result;
+}
+
+
 void RRScheduler::addProcess(const std::shared_ptr<Process>& proc) {
     {
         std::lock_guard<std::mutex> lock(queueMutex);
@@ -104,8 +124,9 @@ void RRScheduler::schedulerLoop() {
 
                 // If a process was found, assign it to the core
                 if (nextProc) {
-                    core->assignedProcess = nextProc;
                     nextProc->setCoreNum(i);
+                    core->assignedProcess = nextProc;
+                    core->busy = true;
                     core->cv.notify_one();
                 }
             }
@@ -137,8 +158,6 @@ void RRScheduler::coreWorker(int coreId) {
             if (!running) break;
 
             proc = core->assignedProcess;
-            core->assignedProcess = nullptr;
-            core->busy = true;
         }
 
         // debugging purposes only
@@ -172,16 +191,19 @@ void RRScheduler::coreWorker(int coreId) {
         if (proc->getCompletedCommands() >= proc->getTotalNoOfCommands()) {
             proc->setFinished(true);
         } else {
-            std::lock_guard<std::mutex> qLock(queueMutex);
-            readyQueue.push(proc);
-            schedulerCV.notify_one();
+            {
+                std::lock_guard<std::mutex> qLock(queueMutex);
+                readyQueue.push(proc);
+                schedulerCV.notify_one();
+            }
         }
-
         {
             std::lock_guard<std::mutex> lock(core->lock);
+            proc->setCoreNum(-1);
+            core->assignedProcess = nullptr;
             core->busy = false;
         }
-
-        proc->setCoreNum(-1);
     }
+    
+
 }

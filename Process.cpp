@@ -106,7 +106,7 @@ unsigned long long Process::getCompletedCommands(){
 }
 
 int Process::getCoreNo(){
-    std::lock_guard<std::mutex> lock(coreNumMutex);
+    std::lock_guard<std::mutex> lock(processMutex);
     return this->coreNum;
 }
 
@@ -124,27 +124,32 @@ bool Process::isFinished() {
 
 // setters ----------------------------------------------------
 void Process::setProcessName(const std::string& name){
+    std::lock_guard<std::mutex> lock(processMutex);
     processName = name;
 }
 
 void Process::setTotalNoOfCommands(unsigned long long tCom){
+    std::lock_guard<std::mutex> lock(processMutex);
     totalNoOfCommands = tCom;
 }
 
 void Process::setCompletedCommands(unsigned long long cCom){
+    std::lock_guard<std::mutex> lock(processMutex);
     completedCommands = cCom;
 }
 
 void Process::setCoreNum(int cNum){
-    std::lock_guard<std::mutex> lock(coreNumMutex);
+    std::lock_guard<std::mutex> lock(processMutex);
     coreNum = cNum;
 }
 
 void Process::setProcessNum(int procNum){
+    std::lock_guard<std::mutex> lock(processMutex);
     processNum = procNum;
 }
 
 void Process::setFinished(bool fin) {
+    std::lock_guard<std::mutex> lock(processMutex);
     finished = fin;
 }
 
@@ -152,8 +157,8 @@ void Process::setFinished(bool fin) {
 
 // New method to check if process is finished based on instructions and loop stack
 bool Process::checkIfFinished() {
-    // We lock coreNumMutex to synchronize access to finished and coreNum
-    std::lock_guard<std::mutex> lock(coreNumMutex);
+    // We lock processMutex to synchronize access to finished and coreNum
+    std::lock_guard<std::mutex> lock(processMutex);
 
     // Finish if completed commands reached or
     // instruction pointer is at end and no loops remain

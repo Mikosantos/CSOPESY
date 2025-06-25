@@ -135,7 +135,7 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
     
     else if (cmd == "screen" && args.size() == 1 && args[0] == "-ls") {
         printSystemSummary();
-        consolePanel.listProcesses(processList);
+        consolePanel.listProcesses(processList, scheduler->getRunningProcesses());
     } 
     
     else if (cmd == "screen" && args.size() >= 2 && args[0] == "-s") {
@@ -409,6 +409,8 @@ void scheduler_stop() {
 }
 
 void report_util(const std::vector<std::shared_ptr<Process>>& processList) {
+    // TODO: change to same implementation from ConsolePanel
+
     std::filesystem::path logPath = std::filesystem::current_path() / "csopesy-log.txt";
     std::ofstream log("csopesy-log.txt");
     if (!log.is_open()) {

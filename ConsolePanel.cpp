@@ -7,6 +7,7 @@
 #include <conio.h>
 #include <random>
 #include <iomanip>
+#include <unordered_set>
 
 #define ORANGE "\033[38;5;208m"
 #define RESET  "\033[0m"
@@ -57,6 +58,8 @@ void ConsolePanel::setCurrentScreen(std::shared_ptr<Console> screenPanel){
     ConsolePanel::curPanel = screenPanel;
 }
 
+/*
+
 // This function lists all the processes in the system, both running and finished.
 void ConsolePanel::listProcesses(const std::vector<std::shared_ptr<Process>>& processes) {
     
@@ -91,6 +94,44 @@ void ConsolePanel::listProcesses(const std::vector<std::shared_ptr<Process>>& pr
     }
     std::cout << "======================================\n\n";
 }
+*/
+
+void ConsolePanel::listProcesses(const std::vector<std::shared_ptr<Process>>& allProcesses,
+                                 const std::vector<std::shared_ptr<Process>>& runningProcesses) {
+    std::unordered_set<std::shared_ptr<Process>> runningSet(runningProcesses.begin(), runningProcesses.end());
+
+    std::cout << "Running Processes:\n";
+    for (const auto& proc : runningProcesses) {
+        auto snapshot = proc->getAtomicSnapshot();
+        if (snapshot.processName == "MAIN_SCREEN") continue;
+
+        std::cout << std::left << std::setw(15) << snapshot.processName
+                  << snapshot.time << "   "
+                  << "Core: " << ORANGE << snapshot.coreNo << RESET << "   "
+                  << ORANGE << snapshot.completedCommands << RESET
+                  << BLUE << " / " << RESET
+                  << ORANGE << snapshot.totalNoCommands << RESET
+                  << "\n";
+    }
+
+    std::cout << "\nFinished Processes:\n";
+    for (const auto& proc : allProcesses) {
+        if (proc->getProcessName() == "MAIN_SCREEN") continue;
+
+        if (proc->isFinished() && !runningSet.count(proc)) {
+            std::cout << std::left << std::setw(15) << proc->getProcessName()
+                      << proc->getTime()                            << "   "
+                      << "Finished!"                                << RESET << "   "
+                      << ORANGE     << proc->getCompletedCommands() << RESET << BLUE << " / " << RESET
+                      << ORANGE     << proc->getTotalNoOfCommands() << RESET
+                      << "\n";
+        }
+    }
+
+    std::cout << "======================================\n\n";
+}
+
+
 
 // This function adds a new console panel (screen) to the list of console panels.
 void ConsolePanel::addConsolePanel(std::shared_ptr<Console> screenPanel){

@@ -15,4 +15,6 @@ public:
     void schedulerLoop() override;
     void coreWorker(int coreId) override;
     void addProcess(const std::shared_ptr<Process>& proc) override;
+
+    std::vector<std::shared_ptr<Process>> getRunningProcesses() const override;
 };

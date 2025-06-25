@@ -64,6 +64,11 @@ public:
             coreTicks[coreId]++;
     }
 
+    virtual std::vector<std::shared_ptr<Process>> getRunningProcesses() const {
+        return {};
+    }
+
+
     // int getSystemTick() const {
     //     return systemTick.load();
     // }

@@ -40,7 +40,7 @@ class Process {
 
         std::vector<std::string> logLines;
 
-        mutable std::mutex coreNumMutex;
+        mutable std::mutex processMutex;
 
     public:
         Process(std::string& pName, int totalCom);
@@ -81,6 +81,28 @@ class Process {
         std::vector<Instruction> getInstructions() const;
         std::vector<std::string> getLogLines() const;
         void appendLogLine(const std::string& line);
+
+        // Atomic snapshot (to use for logging processList)
+        struct ProcessSnapshot {
+        std::string processName;
+        bool isRunning;
+        int coreNo;
+        unsigned long long completedCommands;
+        unsigned long long totalNoCommands;
+        std::string time;
+        };
+
+        ProcessSnapshot getAtomicSnapshot() const {
+        std::lock_guard<std::mutex> lock(processMutex);
+        return {
+            processName,
+            !finished && coreNum != -1,
+            coreNum,
+            completedCommands,
+            totalNoOfCommands,
+            getRawTime()
+            };
+        }
         // ----------------------------------------------------------
 
         // to check if the process is still running
