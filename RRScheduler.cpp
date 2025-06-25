@@ -200,6 +200,7 @@ void RRScheduler::coreWorker(int coreId) {
 
         if (proc->getCompletedCommands() >= proc->getTotalNoOfCommands()) {
             proc->setFinished(true);
+            proc->setCoreNum(-1); // only when finished
         } else {
             {
                 std::lock_guard<std::mutex> qLock(queueMutex);
@@ -209,7 +210,6 @@ void RRScheduler::coreWorker(int coreId) {
         }
         {
             std::lock_guard<std::mutex> lock(core->lock);
-            proc->setCoreNum(-1);
             core->assignedProcess = nullptr;
             core->busy = false;
         }
