@@ -82,7 +82,8 @@ class Process {
         std::vector<std::string> getLogLines() const;
         void appendLogLine(const std::string& line);
 
-        // Atomic snapshot (to use for logging processList)
+        // Atomic snapshot (to use for logging processList, ensures consistent reads
+        // of multiple fields avoiding data races
         struct ProcessSnapshot {
         std::string processName;
         bool isRunning;

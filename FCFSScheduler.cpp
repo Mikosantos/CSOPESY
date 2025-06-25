@@ -37,7 +37,7 @@ void FCFSScheduler::stop() {
     }
 }
 
-// gets all processes assigned to a core
+// Gets all processes assigned to a core
 std::vector<std::shared_ptr<Process>> FCFSScheduler::getRunningProcesses() const {
     std::vector<std::shared_ptr<Process>> running;
 

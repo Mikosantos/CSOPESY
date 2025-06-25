@@ -58,44 +58,14 @@ void ConsolePanel::setCurrentScreen(std::shared_ptr<Console> screenPanel){
     ConsolePanel::curPanel = screenPanel;
 }
 
-/*
+/* This displays a summary of both running and finished processes in the system.
 
-// This function lists all the processes in the system, both running and finished.
-void ConsolePanel::listProcesses(const std::vector<std::shared_ptr<Process>>& processes) {
-    
-    std::cout << "Running Processes: \n";
-    for (const auto& proc : processes) {
-        if (proc->getProcessName() == "MAIN_SCREEN") continue;
+   Each process's data is accessed using a thread-safe snapshot via 'getAtomicSnapshot()' to
+   prevent data races during display.
 
-        if (proc->isRunning()) {
-            std::cout << std::left << std::setw(15) << proc->getProcessName()
-                    << proc->getTime() << "   "
-                    << "Core: " << ORANGE << proc->getCoreNo();
-
-            std::cout << RESET << "   "
-                    << ORANGE << proc->getCompletedCommands() << RESET << BLUE << " / " << RESET
-                    << ORANGE << proc->getTotalNoOfCommands() << RESET
-                    << "\n";
-        }
-    }
-
-    std::cout << "\nFinished Processes: \n";
-    for (const auto& proc : processes) {
-        if (proc->getProcessName() == "MAIN_SCREEN") continue;
-
-        if (proc->isFinished()) {
-            std::cout << std::left << std::setw(15) << proc->getProcessName()
-                      << proc->getTime()                            << "   "
-                      << "Finished!"                                << RESET << "   "
-                      << ORANGE     << proc->getCompletedCommands() << RESET << BLUE << " / " << RESET
-                      << ORANGE     << proc->getTotalNoOfCommands() << RESET
-                      << "\n";
-        }
-    }
-    std::cout << "======================================\n\n";
-}
-*/
-
+   To avoid duplication, it uses a set of currently running processes ('runningProcesses')
+   and excludes them from the "Finished" list even if marked finished, ensuring accurate display.
+ */
 void ConsolePanel::listProcesses(const std::vector<std::shared_ptr<Process>>& allProcesses,
                                  const std::vector<std::shared_ptr<Process>>& runningProcesses) {
     std::unordered_set<std::shared_ptr<Process>> runningSet(runningProcesses.begin(), runningProcesses.end());

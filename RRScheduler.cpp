@@ -3,6 +3,9 @@
 #include <thread>
 #include <iostream>
 
+// TODO: recheck test script,
+
+
 // Constructor
 RRScheduler::RRScheduler(int cores, int delay, unsigned long long quantum)
     : Scheduler(cores, delay), quantumCycles(quantum) {}
@@ -61,6 +64,12 @@ void RRScheduler::stop() {
     }
 }
 
+/*
+  This returns a list of currently running processes.
+  Primarily used for logging purposes (in ConsolePanel's listProcesses, or report-util)
+  Each core is individually locked for safe reading of assigned process without
+  interfering with concurrent scheduling or execution.
+*/
 std::vector<std::shared_ptr<Process>> RRScheduler::getRunningProcesses() const {
     std::vector<std::shared_ptr<Process>> result;
 

@@ -64,6 +64,7 @@ public:
             coreTicks[coreId]++;
     }
 
+    // for consistent reads in logging
     virtual std::vector<std::shared_ptr<Process>> getRunningProcesses() const {
         return {};
     }

@@ -409,7 +409,7 @@ void scheduler_stop() {
 }
 
 void report_util(const std::vector<std::shared_ptr<Process>>& processList) {
-    // TODO: change to same implementation from ConsolePanel
+    // TODO: update to same implementation from ConsolePanel's listProcesses
 
     std::filesystem::path logPath = std::filesystem::current_path() / "csopesy-log.txt";
     std::ofstream log("csopesy-log.txt");
