@@ -80,7 +80,7 @@ std::vector<std::shared_ptr<Process>> RRScheduler::getRunningProcesses() const {
             std::lock_guard<std::mutex> lock(cores[i]->lock);
             proc = cores[i]->assignedProcess;
 
-            if (proc) {
+            if (proc && proc->getCompletedCommands() < proc->getTotalNoOfCommands()) {
                 result.push_back(proc);
             }
         }
