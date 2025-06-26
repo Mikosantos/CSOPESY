@@ -15,20 +15,23 @@ void RRScheduler::start() {
     running = true;
 
     // Initialize CPU cores and their tick threads
-    cores.reserve(coreCount);
+    cores.resize(coreCount);             
     tickThreads.resize(coreCount);
 
     for (int i = 0; i < coreCount; ++i) {
+        // Fully prepare the core in a temp variable
         auto core = std::make_unique<CPUCore>();
         core->busy = false;
         core->assignedProcess = nullptr;
 
-        // Start core worker thread
-        core->thread = std::thread(&RRScheduler::coreWorker, this, i);
+        // Assign to vector first so other threads can see it
+        cores[i] = std::move(core);
+    }
 
-        cores.push_back(std::move(core));
+    // Start core threads after all cores[] are fully initialized
+    for (int i = 0; i < coreCount; ++i) {
+        cores[i]->thread = std::thread(&RRScheduler::coreWorker, this, i);
 
-        // Start tick thread per core
         tickThreads[i] = std::thread([this, i]() {
             while (running) {
                 incrementCoreTick(i);
@@ -37,8 +40,8 @@ void RRScheduler::start() {
         });
     }
 
-    // Start the scheduler thread
     schedulerThread = std::thread(&RRScheduler::schedulerLoop, this);
+
 }
 
 // Stop the scheduler
@@ -170,12 +173,12 @@ void RRScheduler::coreWorker(int coreId) {
         }
 
         // debugging purposes only
-        if (!proc) {
-            std::cerr << "[WARN] Core " << coreId << " received null process!\n";
-            std::lock_guard<std::mutex> lock(core->lock);
-            core->busy = false;
-            continue;
-        }
+        // if (!proc) {
+        //     std::cerr << "[WARN] Core " << coreId << " received null process!\n";
+        //     std::lock_guard<std::mutex> lock(core->lock);
+        //     core->busy = false;
+        //     continue;
+        // }
 
         unsigned long long executedTicks = 0;
         while (running && executedTicks < quantumCycles) {
@@ -199,20 +202,23 @@ void RRScheduler::coreWorker(int coreId) {
 
         if (proc->getCompletedCommands() >= proc->getTotalNoOfCommands()) {
             proc->setFinished(true);
-            proc->setCoreNum(-1); // only when finished
+            {
+                std::unique_lock<std::mutex> coreLock(core->lock);
+                core->assignedProcess = nullptr;
+                core->busy = false;
+                proc->setCoreNum(-1); 
+            }
         } else {
             {
                 std::lock_guard<std::mutex> qLock(queueMutex);
                 readyQueue.push(proc);
                 schedulerCV.notify_one();
             }
-        }
-        {
-            std::lock_guard<std::mutex> lock(core->lock);
-            core->assignedProcess = nullptr;
-            core->busy = false;
+            {
+                std::unique_lock<std::mutex> coreLock(core->lock);
+                core->assignedProcess = nullptr;
+                core->busy = false;
+            }
         }
     }
-    
-
 }
