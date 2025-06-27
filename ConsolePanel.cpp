@@ -7,6 +7,7 @@
 #include <conio.h>
 #include <random>
 #include <iomanip>
+#include <unordered_set>
 
 #define ORANGE "\033[38;5;208m"
 #define RESET  "\033[0m"
@@ -57,36 +58,37 @@ void ConsolePanel::setCurrentScreen(std::shared_ptr<Console> screenPanel){
     ConsolePanel::curPanel = screenPanel;
 }
 
-// This function lists all the processes in the system, both running and finished.
-void ConsolePanel::listProcesses(const std::vector<std::shared_ptr<Process>>& processes) {
-    std::cout << "Running Processes: \n";
+/* This displays a summary of both running and finished processes in the system.
 
-    for (const auto& proc : processes) {
-        if (proc->getProcessName() == "MAIN_SCREEN") continue;
+   Each process's data is accessed using a thread-safe snapshot via 'getAtomicSnapshot()' to
+   prevent data races during display.
 
-        if (proc->isRunning()) {
-            std::cout << std::left << std::setw(15) << proc->getProcessName()
-                    << proc->getTime() << "   "
-                    << "Core: " << ORANGE << proc->getCoreNo();
+   To avoid duplication, it uses a set of currently running processes ('runningProcesses')
+   and excludes them from the "Finished" list even if marked finished, ensuring accurate display.
+ */
+void ConsolePanel::listProcesses(const std::vector<std::shared_ptr<Process>>& allProcesses,
+                                 const std::vector<std::shared_ptr<Process>>& runningProcesses) {
+    std::unordered_set<std::shared_ptr<Process>> runningSet(runningProcesses.begin(), runningProcesses.end());
 
-            // if (proc->getCoreNo() != -1)
-            //     std::cout << ORANGE << proc->getCoreNo();
-            // else
-            //     std::cout << ORANGE << "(waiting)";
+    std::cout << "Running Processes:\n";
+    for (const auto& proc : runningProcesses) {
+        auto snapshot = proc->getAtomicSnapshot();
+        if (snapshot.processName == "MAIN_SCREEN") continue;
 
-            std::cout << RESET << "   "
-                    << ORANGE << proc->getCompletedCommands() << RESET << BLUE << " / " << RESET
-                    << ORANGE << proc->getTotalNoOfCommands() << RESET
-                    << "\n";
-        }
+        std::cout << std::left << std::setw(15) << snapshot.processName
+                  << snapshot.time << "   "
+                  << "Core: " << ORANGE << snapshot.coreNo << RESET << "   "
+                  << ORANGE << snapshot.completedCommands << RESET
+                  << BLUE << " / " << RESET
+                  << ORANGE << snapshot.totalNoCommands << RESET
+                  << "\n";
     }
 
-    std::cout << "\nFinished Processes: \n";
-
-    for (const auto& proc : processes) {
+    std::cout << "\nFinished Processes:\n";
+    for (const auto& proc : allProcesses) {
         if (proc->getProcessName() == "MAIN_SCREEN") continue;
 
-        if (proc->isFinished()) {
+        if (proc->isFinished() && !runningSet.count(proc)) {
             std::cout << std::left << std::setw(15) << proc->getProcessName()
                       << proc->getTime()                            << "   "
                       << "Finished!"                                << RESET << "   "
@@ -98,6 +100,8 @@ void ConsolePanel::listProcesses(const std::vector<std::shared_ptr<Process>>& pr
 
     std::cout << "======================================\n\n";
 }
+
+
 
 // This function adds a new console panel (screen) to the list of console panels.
 void ConsolePanel::addConsolePanel(std::shared_ptr<Console> screenPanel){

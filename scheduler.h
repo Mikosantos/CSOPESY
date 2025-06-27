@@ -12,7 +12,7 @@
 class Scheduler {
 protected:
     int coreCount;
-    int delayPerExec;
+    unsigned long long delayPerExec;
     std::atomic<bool> running{false};
 
     struct CPUCore {
@@ -32,8 +32,13 @@ protected:
 
     std::atomic<int> cpuTicks{0};
 
+    std::vector<std::atomic<unsigned long long>> coreTicks; // one tick counter per core
+    // std::atomic<int> systemTick{0};                      // used for batch generation
+
+    std::vector<std::thread> tickThreads;
+
 public:
-    Scheduler(int cores, int delay);
+    Scheduler(int cores, unsigned long long delay);
     virtual ~Scheduler();
 
     virtual void start() = 0;
@@ -46,4 +51,32 @@ public:
     int getBusyCoreCount() const;
     int getAvailableCoreCount() const;
     int getCPUTicks() const { return cpuTicks.load(); }
+    
+    // for ticks
+    unsigned long long getCoreTick(int coreId) const {
+        if (coreId >= 0 && coreId < coreTicks.size())
+            return coreTicks[coreId].load();
+        return -1;
+    }
+
+    void incrementCoreTick(int coreId) {
+        if (coreId >= 0 && coreId < coreTicks.size())
+            coreTicks[coreId]++;
+    }
+
+    // for consistent reads in logging
+    virtual std::vector<std::shared_ptr<Process>> getRunningProcesses() const {
+        return {};
+    }
+
+
+    // int getSystemTick() const {
+    //     return systemTick.load();
+    // }
+
+    // void incrementSystemTick() {
+    //     systemTick++;
+    // }
 };
+
+

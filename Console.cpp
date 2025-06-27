@@ -3,7 +3,7 @@
 #include <ctime>
 #include <string>
 
-Console::Console(std:: string cName, int cLine, int tLines, int pId) :
+Console::Console(std:: string cName, unsigned long long cLine, unsigned long long tLines, int pId) :
     consoleName(cName), curLine(cLine), totalLines(tLines), processId(pId) {
 }
 
@@ -11,11 +11,11 @@ std::string Console::getConsoleName() const {
     return consoleName;
 }
 
-int Console::getCurrentLine() const { 
+unsigned long long Console::getCurrentLine() const { 
     return curLine;
 }
 
-int Console::getTotalLines() const { 
+unsigned long long Console::getTotalLines() const { 
     return totalLines;
 }
 
@@ -27,11 +27,11 @@ void Console::setConsoleName(const std::string& name) {
     consoleName = name; 
 }
 
-void Console::setCurrentLine(int cLine) {
+void Console::setCurrentLine(unsigned long long cLine) {
     curLine = cLine;
 }
 
-void Console::setTotalLines(int tLines) {
+void Console::setTotalLines(unsigned long long tLines) {
     totalLines = tLines;
 }
 

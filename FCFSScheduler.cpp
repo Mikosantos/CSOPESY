@@ -2,7 +2,7 @@
 #include <chrono>
 #include <thread>
 
-FCFSScheduler::FCFSScheduler(int cores, int delay) : Scheduler(cores, delay) {}
+FCFSScheduler::FCFSScheduler(int cores, unsigned long long delay) : Scheduler(cores, delay) {}
 
 FCFSScheduler::~FCFSScheduler() {
     stop();
@@ -20,13 +20,6 @@ void FCFSScheduler::start() {
     }
 
     schedulerThread = std::thread(&FCFSScheduler::schedulerLoop, this);
-
-    tickThread = std::thread([this]() {
-        while (running) {
-            cpuTicks++;
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
-    });
 }
 
 // Stop the scheduler and join all threads
@@ -42,7 +35,20 @@ void FCFSScheduler::stop() {
     for (auto& core : cores) {
         if (core->thread.joinable()) core->thread.join();
     }
-    if (tickThread.joinable()) tickThread.join();
+}
+
+// Gets all processes assigned to a core
+std::vector<std::shared_ptr<Process>> FCFSScheduler::getRunningProcesses() const {
+    std::vector<std::shared_ptr<Process>> running;
+
+    for (const auto& core : cores) {
+        std::lock_guard<std::mutex> lock(core->lock);
+        if (core->assignedProcess) {
+            running.push_back(core->assignedProcess);
+        }
+    }
+
+    return running;
 }
 
 // Add a process to the ready queue
@@ -96,18 +102,26 @@ void FCFSScheduler::coreWorker(int coreId) {
         lock.unlock();
 
         while (running && proc->getCompletedCommands() < proc->getTotalNoOfCommands()) {
+            int currentTick = getCoreTick(coreId);
+            
             // Simulate execution delay from SLEEP instruction
-            if (proc->isSleeping(cpuTicks.load())) {
+            if (proc->isSleeping(currentTick)) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                incrementCoreTick(coreId);
                 continue;
             }
 
-            proc->executeInstruction(coreId, cpuTicks.load());
+            // NOTE: passing currentTick for SLEEP and FOR instruction
+            proc->executeInstruction(coreId, currentTick);
 
             // Simulate execution delay from delayPerExec
-            int startTick = cpuTicks.load();
-            while (running && (cpuTicks.load() - startTick < delayPerExec)) {
-                std::this_thread::sleep_for(std::chrono::microseconds(50));
+            if (delayPerExec > 0) {
+                for (int i = 0; i < delayPerExec; ++i) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                    incrementCoreTick(coreId);
+                }
+            } else {
+                incrementCoreTick(coreId);  // Only add 1 tick if no delay is set
             }
         }
 
