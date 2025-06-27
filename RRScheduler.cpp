@@ -67,31 +67,6 @@ void RRScheduler::stop() {
     }
 }
 
-/*
-  This returns a list of currently running processes.
-  Primarily used for logging purposes (in ConsolePanel's listProcesses, or report-util)
-  Each core is individually locked for safe reading of assigned process without
-  interfering with concurrent scheduling or execution.
-*/
-std::vector<std::shared_ptr<Process>> RRScheduler::getRunningProcesses() const {
-    std::vector<std::shared_ptr<Process>> result;
-
-    for (int i = 0; i < cores.size(); ++i) {
-        std::shared_ptr<Process> proc;
-
-        {
-            std::lock_guard<std::mutex> lock(cores[i]->lock);
-            proc = cores[i]->assignedProcess;
-
-            if (proc && proc->getCompletedCommands() < proc->getTotalNoOfCommands()) {
-                result.push_back(proc);
-            }
-        }
-    }
-
-    return result;
-}
-
 
 void RRScheduler::addProcess(const std::shared_ptr<Process>& proc) {
     {

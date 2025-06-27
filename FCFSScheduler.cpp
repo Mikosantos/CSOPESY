@@ -37,20 +37,6 @@ void FCFSScheduler::stop() {
     }
 }
 
-// Gets all processes assigned to a core
-std::vector<std::shared_ptr<Process>> FCFSScheduler::getRunningProcesses() const {
-    std::vector<std::shared_ptr<Process>> running;
-
-    for (const auto& core : cores) {
-        std::lock_guard<std::mutex> lock(core->lock);
-        if (core->assignedProcess) {
-            running.push_back(core->assignedProcess);
-        }
-    }
-
-    return running;
-}
-
 // Add a process to the ready queue
 void FCFSScheduler::addProcess(const std::shared_ptr<Process>& proc) {
     std::lock_guard<std::mutex> lock(queueMutex);

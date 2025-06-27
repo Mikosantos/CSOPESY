@@ -35,3 +35,22 @@ int Scheduler::getBusyCoreCount() const {
 int Scheduler::getAvailableCoreCount() const {
     return coreCount - getBusyCoreCount();
 }
+
+std::vector<std::shared_ptr<Process>> Scheduler::getRunningProcesses() const {
+    
+    std::vector<std::shared_ptr<Process>> result;
+
+    for (int i = 0; i < cores.size(); ++i) {
+        std::shared_ptr<Process> proc;
+        {
+            std::lock_guard<std::mutex> lock(cores[i]->lock);
+            proc = cores[i]->assignedProcess;
+
+            if (proc && proc->getCompletedCommands() < proc->getTotalNoOfCommands()) {
+                result.push_back(proc);
+            }
+        }
+    }
+
+    return result;
+}
