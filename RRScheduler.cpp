@@ -91,30 +91,33 @@ void RRScheduler::schedulerLoop() {
             If a core is idle, it will take the next process from the ready queue and assign it to that core.
             The core worker thread will then be notified to start executing the assigned process.
         */
-        for (int i = 0; i < cores.size(); ++i) {
-            auto& core = cores[i];
-            std::unique_lock<std::mutex> coreLock(core->lock);
+       {
+            std::lock_guard<std::mutex> assign(assignLock);
+            for (int i = 0; i < cores.size(); ++i) {
+                auto& core = cores[i];
+                std::unique_lock<std::mutex> coreLock(core->lock);
 
-            // If the core is not busy and has no assigned process, try to assign a new process
-            // This check is done inside the core's lock to ensure thread safety
-            if (!core->busy && core->assignedProcess == nullptr) {
-                std::shared_ptr<Process> nextProc = nullptr;
-                
-                // Try to get the next process from the ready queue
-                {
-                    std::lock_guard<std::mutex> qLock(queueMutex);
-                    if (!readyQueue.empty()) {
-                        nextProc = readyQueue.front();
-                        readyQueue.pop();
+                // If the core is not busy and has no assigned process, try to assign a new process
+                // This check is done inside the core's lock to ensure thread safety
+                if (/*!core->busy &&*/ core->assignedProcess == nullptr) {
+                    std::shared_ptr<Process> nextProc = nullptr;
+                    
+                    // Try to get the next process from the ready queue
+                    {
+                        std::lock_guard<std::mutex> qLock(queueMutex);
+                        if (!readyQueue.empty()) {
+                            nextProc = readyQueue.front();
+                            readyQueue.pop();
+                        }
                     }
-                }
 
-                // If a process was found, assign it to the core
-                if (nextProc) {
-                    nextProc->setCoreNum(i);
-                    core->assignedProcess = nextProc;
-                    core->busy = true;
-                    core->cv.notify_one();
+                    // If a process was found, assign it to the core
+                    if (nextProc) {
+                        core->assignedProcess = nextProc;
+                        core->busy = true;
+                        nextProc->setCoreNum(i);
+                        core->cv.notify_one();
+                    }
                 }
             }
         }
@@ -184,15 +187,17 @@ void RRScheduler::coreWorker(int coreId) {
                 proc->setCoreNum(-1); 
             }
         } else {
-            {
-                std::lock_guard<std::mutex> qLock(queueMutex);
-                readyQueue.push(proc);
-                schedulerCV.notify_one();
-            }
+            // clear first
             {
                 std::unique_lock<std::mutex> coreLock(core->lock);
                 core->assignedProcess = nullptr;
                 core->busy = false;
+            }
+            // requeue
+            {
+                std::lock_guard<std::mutex> qLock(queueMutex);
+                readyQueue.push(proc);
+                schedulerCV.notify_one();
             }
         }
     }

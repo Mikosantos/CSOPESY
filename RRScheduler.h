@@ -10,6 +10,7 @@ private:
     unsigned long long quantumCycles;
     std::condition_variable schedulerCV;
     std::mutex schedulerMutex;
+    std::mutex assignLock;
 
 public:
     RRScheduler(int cores, int delay, unsigned long long quantum);
