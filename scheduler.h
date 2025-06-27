@@ -64,10 +64,13 @@ public:
             coreTicks[coreId]++;
     }
 
-    // for consistent reads in logging
-    virtual std::vector<std::shared_ptr<Process>> getRunningProcesses() const {
-        return {};
-    }
+    /*
+    This returns a list of currently running processes.
+    Primarily used for logging purposes (in ConsolePanel's listProcesses, or report-util)
+    Each core is individually locked for safe reading of assigned process without
+    interfering with concurrent scheduling or execution.
+    */
+    std::vector<std::shared_ptr<Process>> getRunningProcesses() const;
 
 
     // int getSystemTick() const {
