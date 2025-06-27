@@ -18,6 +18,7 @@
 #include <cstdlib>
 #include <sstream>
 #include <iomanip>
+#include <unordered_set>
 #include <filesystem>
 #include <fstream>
 #include <chrono>
@@ -37,7 +38,7 @@ pair<string, vector<string>> parseCommand(const string& input);
 void initialize();
 void scheduler_start(std::vector<std::shared_ptr<Process>>& processList, ConsolePanel& consolePanel);
 void scheduler_stop();
-void report_util(const std::vector<std::shared_ptr<Process>>& processList);
+void report_util(const std::vector<std::shared_ptr<Process>>& allProcesses, const std::vector<std::shared_ptr<Process>>& runningProcesses);
 void printSystemSummary();
 void printHelpMenu();
 void handleExit();
@@ -130,7 +131,7 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
     } 
     
     else if (cmd == "report-util") {
-        report_util(processList);
+        report_util(processList, scheduler->getRunningProcesses());
     } 
     
     else if (cmd == "screen" && args.size() == 1 && args[0] == "-ls") {
@@ -408,8 +409,8 @@ void scheduler_stop() {
 	stopBatchGeneration();
 }
 
-void report_util(const std::vector<std::shared_ptr<Process>>& processList) {
-    // TODO: update to same implementation from ConsolePanel's listProcesses
+void report_util(const std::vector<std::shared_ptr<Process>>& allProcesses,
+                const std::vector<std::shared_ptr<Process>>& runningProcesses) {
 
     std::filesystem::path logPath = std::filesystem::current_path() / "csopesy-log.txt";
     std::ofstream log("csopesy-log.txt");
@@ -433,31 +434,37 @@ void report_util(const std::vector<std::shared_ptr<Process>>& processList) {
     log << "======================================\n";
 
     // Running processes
+    std::unordered_set<std::shared_ptr<Process>> runningSet(runningProcesses.begin(), runningProcesses.end());
+
     log << "Running Processes:\n";
-    for (const auto& proc : processList) {
+    for (const auto& proc : runningProcesses) {
+        auto snapshot = proc->getAtomicSnapshot();
+        if (snapshot.processName == "MAIN_SCREEN") continue;
+
+        log << std::left << std::setw(15) << snapshot.processName
+                  << snapshot.time << "   "
+                  << "Core: " << snapshot.coreNo <<  "   "
+                  << snapshot.completedCommands
+                  << " / "
+                  << snapshot.totalNoCommands
+                  << "\n";
+    }
+
+    log << "\nFinished Processes:\n";
+    for (const auto& proc : allProcesses) {
         if (proc->getProcessName() == "MAIN_SCREEN") continue;
-        if (!proc->isFinished()  && proc->getCompletedCommands() > 0) {
-            log << std::left << std::setw(15) << proc->getProcessName()
-                << proc->getRawTime() << "   "
-                << "Core: " << proc->getCoreNo() << "   "
-                << proc->getCompletedCommands() << " / "
-                << proc->getTotalNoOfCommands() << "\n";
+
+        if (proc->isFinished() && !runningSet.count(proc)) {
+            log << proc->getProcessName() << "\t\t"
+                      << proc->getRawTime()                            << "   "
+                      << "Finished!"                                << "   "
+                      << proc->getCompletedCommands() << " / "
+                      << proc->getTotalNoOfCommands() 
+                      << "\n";
         }
     }
 
-    // Finished processes
-    log << "\nFinished Processes:\n";
-    for (const auto& proc : processList) {
-        if (proc->getProcessName() == "MAIN_SCREEN") continue;
-        if (proc->isFinished()) {
-            log << std::left << std::setw(15) << proc->getProcessName()
-                << proc->getRawTime() << "   "
-                << "Finished!" << "   "
-                << proc->getCompletedCommands() << " / "
-                << proc->getTotalNoOfCommands() << "\n";
-        }
-    }
-    log << "======================================\n";
+    log << "======================================\n\n";
 
     log.close();
     setColor(0x02); //color green
