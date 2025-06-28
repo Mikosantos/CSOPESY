@@ -210,3 +210,64 @@ inline int countExpandedInstructions(const std::vector<Instruction>& instruction
 
     return count;
 }
+
+inline std::vector<Instruction> generateFixedInstructions(unsigned long long totalInstructions) {
+    std::vector<Instruction> result;
+
+    // The 6 instructions block
+    std::vector<Instruction> block;
+
+    Instruction addX;
+    addX.type = InstructionType::ADD;
+    addX.var1 = "x";
+    addX.var2 = "x";
+    addX.var2IsImmediate = false;
+    addX.var3ImmediateValue = 1;
+    addX.var3IsImmediate = true;
+    block.push_back(addX);
+
+    Instruction printX;
+    printX.type = InstructionType::PRINT;
+    printX.var1 = "x";
+    printX.message = "Value from: x";
+    block.push_back(printX);
+
+    Instruction addY;
+    addY.type = InstructionType::ADD;
+    addY.var1 = "y";
+    addY.var2 = "y";
+    addY.var2IsImmediate = false;
+    addY.var3ImmediateValue = 1;
+    addY.var3IsImmediate = true;
+    block.push_back(addY);
+
+    Instruction printY;
+    printY.type = InstructionType::PRINT;
+    printY.var1 = "y";
+    printY.message = "Value from: y";
+    block.push_back(printY);
+
+    Instruction addZ;
+    addZ.type = InstructionType::ADD;
+    addZ.var1 = "z";
+    addZ.var2 = "z";
+    addZ.var2IsImmediate = false;
+    addZ.var3ImmediateValue = 1;
+    addZ.var3IsImmediate = true;
+    block.push_back(addZ);
+
+    Instruction printZ;
+    printZ.type = InstructionType::PRINT;
+    printZ.var1 = "z";
+    printZ.message = "Value from: z";
+    block.push_back(printZ);
+
+    // Step 1: Add the FOR loop with exactly 100 repeats (600 instructions)
+    Instruction forInstr;
+    forInstr.type = InstructionType::FOR;
+    forInstr.loopRepeat = 100;  // Exactly 100 repeats
+    forInstr.loopInstructions = block;
+    result.push_back(forInstr);
+
+    return result;
+}
