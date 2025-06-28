@@ -2,9 +2,7 @@
 #include <chrono>
 #include <thread>
 #include <iostream>
-
-// TODO: recheck test script
-
+#include <unordered_set>
 
 // Constructor
 RRScheduler::RRScheduler(int cores, int delay, unsigned long long quantum)
@@ -14,24 +12,23 @@ RRScheduler::RRScheduler(int cores, int delay, unsigned long long quantum)
 void RRScheduler::start() {
     running = true;
 
-    // Initialize CPU cores and their tick threads
-    cores.resize(coreCount);             
+    // Prepare CPU cores
+    cores.resize(coreCount);
     tickThreads.resize(coreCount);
 
+    // core assignments
+    coreThreads.resize(coreCount);
+    coreAssignments.resize(coreCount, nullptr);
+
     for (int i = 0; i < coreCount; ++i) {
-        // Fully prepare the core in a temp variable
         auto core = std::make_unique<CPUCore>();
         core->busy = false;
         core->assignedProcess = nullptr;
-
-        // Assign to vector first so other threads can see it
         cores[i] = std::move(core);
     }
 
-    // Start core threads after all cores[] are fully initialized
+    // Start tick threads
     for (int i = 0; i < coreCount; ++i) {
-        cores[i]->thread = std::thread(&RRScheduler::coreWorker, this, i);
-
         tickThreads[i] = std::thread([this, i]() {
             while (running) {
                 incrementCoreTick(i);
@@ -41,7 +38,6 @@ void RRScheduler::start() {
     }
 
     schedulerThread = std::thread(&RRScheduler::schedulerLoop, this);
-
 }
 
 // Stop the scheduler
@@ -51,23 +47,31 @@ void RRScheduler::stop() {
     schedulerCV.notify_all();
     if (schedulerThread.joinable()) schedulerThread.join();
 
-    // Notify and join core workers
+    // Join core threads - use the coreThreads vector from schedulerLoop
+    // Note: We need to ensure all threads are properly joined before cleanup
     for (auto& core : cores) {
         std::unique_lock<std::mutex> lock(core->lock);
         core->cv.notify_all();
     }
 
-    for (auto& core : cores) {
-        if (core->thread.joinable()) core->thread.join();
+    for (auto& t : coreThreads) {
+        if (t.joinable()) t.join();
     }
 
     // Join tick threads
     for (auto& t : tickThreads) {
         if (t.joinable()) t.join();
     }
+
+    // additional cleanup
+    for (int i = 0; i < coreCount; ++i) {
+        coreAssignments[i] = nullptr;
+        cores[i]->assignedProcess = nullptr;
+        cores[i]->busy = false;
+    }
 }
 
-
+// Add process to ready queue
 void RRScheduler::addProcess(const std::shared_ptr<Process>& proc) {
     {
         std::lock_guard<std::mutex> lock(queueMutex);
@@ -77,128 +81,128 @@ void RRScheduler::addProcess(const std::shared_ptr<Process>& proc) {
 }
 
 void RRScheduler::schedulerLoop() {
-    std::unique_lock<std::mutex> schedLock(schedulerMutex);
     while (running) {
-        // Wait for a process to be added to the ready queue or for the scheduler to stop
-        // This will block until either a process is available or running is set to false
-        schedulerCV.wait(schedLock, [this]() {
+        std::unique_lock<std::mutex> schedLock(schedulerMutex);
+        schedulerCV.wait_for(schedLock, std::chrono::milliseconds(1), [this]() {
             return !readyQueue.empty() || !running;
         });
 
-        /*
-            Iterate through all CPU cores and assign processes from the ready queue
-            to idle cores. If a core is busy or has an assigned process, it will skip that core.
-            If a core is idle, it will take the next process from the ready queue and assign it to that core.
-            The core worker thread will then be notified to start executing the assigned process.
-        */
-       {
-            std::lock_guard<std::mutex> assign(assignLock);
-            for (int i = 0; i < cores.size(); ++i) {
-                auto& core = cores[i];
-                std::unique_lock<std::mutex> coreLock(core->lock);
-
-                // If the core is not busy and has no assigned process, try to assign a new process
-                // This check is done inside the core's lock to ensure thread safety
-                if (/*!core->busy &&*/ core->assignedProcess == nullptr) {
-                    std::shared_ptr<Process> nextProc = nullptr;
-                    
-                    // Try to get the next process from the ready queue
-                    {
-                        std::lock_guard<std::mutex> qLock(queueMutex);
-                        if (!readyQueue.empty()) {
-                            nextProc = readyQueue.front();
-                            readyQueue.pop();
-                        }
-                    }
-
-                    // If a process was found, assign it to the core
-                    if (nextProc) {
-                        core->assignedProcess = nextProc;
-                        core->busy = true;
-                        nextProc->setCoreNum(i);
-                        core->cv.notify_one();
-                    }
+        for (int core = 0; core < coreCount; ++core) {
+            // Join finished thread if process is finished
+            if (coreAssignments[core] && coreAssignments[core]->isFinished()) {
+                if (coreThreads[core].joinable()) {
+                    coreThreads[core].join();
                 }
-            }
-        }
-    }
-}
 
-/*
-    Worker thread for each CPU core
-    This method runs in a separate thread for each core and continuously checks for assigned processes.
-    It executes instructions of the assigned process for a specified number of quantum cycles.
-    If the process is finished or has no more instructions to execute, it will be re-enqueued to the ready queue.
-
-    The worker will also handle sleeping processes by checking if the process is sleeping and waiting accordingly.
-    If the process is not finished, it will be re-enqueued to the ready queue for further execution.
-*/
-void RRScheduler::coreWorker(int coreId) {
-    auto& core = cores[coreId];
-
-    while (running) {
-        std::shared_ptr<Process> proc;
-
-        {
-            std::unique_lock<std::mutex> lock(core->lock);
-            core->cv.wait(lock, [&]() {
-                return core->assignedProcess != nullptr || !running;
-            });
-
-            if (!running) break;
-
-            proc = core->assignedProcess;
-        }
-
-        // debugging purposes only
-        // if (!proc) {
-        //     std::cerr << "[WARN] Core " << coreId << " received null process!\n";
-        //     std::lock_guard<std::mutex> lock(core->lock);
-        //     core->busy = false;
-        //     continue;
-        // }
-
-        unsigned long long executedTicks = 0;
-        while (running && executedTicks < quantumCycles) {
-            int currentTick = getCoreTick(coreId);
-            if (proc->isFinished()) break;
-
-            if (proc->isSleeping(currentTick)) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                {
+                    std::lock_guard<std::mutex> lock(cores[core]->lock);
+                    cores[core]->busy = false;
+                    coreAssignments[core]->setCoreNum(-1);
+                    coreThreads[core] = std::thread(); // Reset
+                    coreAssignments[core] = nullptr;
+                }
                 continue;
             }
 
-            proc->executeInstruction(coreId, currentTick);
-            executedTicks++;
+            // Join thread if quantum exceeded but not finished
+            if (coreAssignments[core] &&
+                coreAssignments[core]->getQuantumUsed() >= quantumCycles) {
+                if (coreThreads[core].joinable()) {
+                    coreThreads[core].join();
+                }
 
-            if (delayPerExec > 0) {
-                for (int i = 0; i < delayPerExec; ++i) {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                // Reset quantum, requeue
+                coreAssignments[core]->resetQuantumUsed();
+                {
+                    std::lock_guard<std::mutex> qLock(queueMutex);
+                    readyQueue.push(coreAssignments[core]);
+                }
+                coreThreads[core] = std::thread(); // Reset
+                coreAssignments[core] = nullptr;
+                {
+                    std::lock_guard<std::mutex> lock(cores[core]->lock);
+                    cores[core]->busy = false;
+                }
+                schedulerCV.notify_one();
+            }
+
+            // If core is idle, assign a new process
+            if (!coreAssignments[core] && !cores[core]->busy) {
+                std::shared_ptr<Process> nextProc = nullptr;
+                {
+                    std::lock_guard<std::mutex> qLock(queueMutex);
+                    if (!readyQueue.empty()) {
+                        nextProc = readyQueue.front();
+                        readyQueue.pop();
+                    }
+                }
+
+                if (nextProc) {
+                    coreAssignments[core] = nextProc;
+                    nextProc->setCoreNum(core);
+                    {
+                        std::lock_guard<std::mutex> lock(cores[core]->lock);
+                        cores[core]->busy = true;
+                    }
+
+                    nextProc->resetQuantumUsed();
+                    coreThreads[core] = std::thread([this, nextProc, core]() {
+                        unsigned long long ticks = 0;
+                        while (running && !nextProc->isFinished() && ticks < quantumCycles) {
+                            int tick = getCoreTick(core);
+
+                            if (nextProc->isSleeping(tick)) {
+                                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                                continue;
+                            }
+
+                            nextProc->executeInstruction(core, tick);
+                            nextProc->incrementQuantumUsed();
+                            ++ticks;
+
+                            if (delayPerExec > 0) {
+                                for (int i = 0; i < delayPerExec; ++i) {
+                                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                                }
+                            }
+                        }
+                    });
                 }
             }
         }
+    }
 
-        if (proc->getCompletedCommands() >= proc->getTotalNoOfCommands()) {
-            proc->setFinished(true);
-            {
-                std::unique_lock<std::mutex> coreLock(core->lock);
-                core->assignedProcess = nullptr;
-                core->busy = false;
-                proc->setCoreNum(-1); 
-            }
-        } else {
-            // clear first
-            {
-                std::unique_lock<std::mutex> coreLock(core->lock);
-                core->assignedProcess = nullptr;
-                core->busy = false;
-            }
-            // requeue
-            {
-                std::lock_guard<std::mutex> qLock(queueMutex);
-                readyQueue.push(proc);
-                schedulerCV.notify_one();
-            }
+    // Final join on all threads when stopping
+    for (int i = 0; i < coreCount; ++i) {
+        if (coreThreads[i].joinable()) coreThreads[i].join();
+    }
+}
+
+
+void RRScheduler::coreWorker(int coreId) {
+    // to work with scheduler base class
+}
+
+// Override printing methods to use coreAssignments
+int RRScheduler::getBusyCoreCount() const {
+    int count = 0;
+    for (int i = 0; i < coreCount; ++i) {
+        if (coreAssignments[i] != nullptr && !coreAssignments[i]->isFinished()) {
+            count++;
         }
     }
+    return count;
+}
+
+std::vector<std::shared_ptr<Process>> RRScheduler::getRunningProcesses() const {
+    std::vector<std::shared_ptr<Process>> result;
+    
+    for (int i = 0; i < coreCount; ++i) {
+        if (coreAssignments[i] && 
+            coreAssignments[i]->getCompletedCommands() < coreAssignments[i]->getTotalNoOfCommands()) {
+            result.push_back(coreAssignments[i]);
+        }
+    }
+    
+    return result;
 }

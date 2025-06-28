@@ -48,7 +48,7 @@ public:
     virtual void coreWorker(int coreId) = 0;
 
     virtual void addProcess(const std::shared_ptr<Process>& proc);
-    int getBusyCoreCount() const;
+    virtual int getBusyCoreCount() const;
     int getAvailableCoreCount() const;
     int getCPUTicks() const { return cpuTicks.load(); }
     
@@ -70,7 +70,7 @@ public:
     Each core is individually locked for safe reading of assigned process without
     interfering with concurrent scheduling or execution.
     */
-    std::vector<std::shared_ptr<Process>> getRunningProcesses() const;
+    virtual std::vector<std::shared_ptr<Process>> getRunningProcesses() const;
 
 
     // int getSystemTick() const {

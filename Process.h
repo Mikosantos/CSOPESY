@@ -17,6 +17,8 @@ class Process {
         unsigned long long pointer;
     };
     std::vector<LoopContext> loopStack;
+
+    int quantumUsed = 0;
     
     private:
         std::string processName;
@@ -110,4 +112,16 @@ class Process {
         bool isRunning() const;
 
         bool checkIfFinished();
+
+        int getQuantumUsed() const {
+            return quantumUsed;
+        }
+
+        void resetQuantumUsed() {
+            quantumUsed = 0;
+        }
+
+        void incrementQuantumUsed() {
+            ++quantumUsed;
+        }
 };
