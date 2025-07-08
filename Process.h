@@ -8,6 +8,13 @@
 #include <chrono>
 #include <mutex>
 
+enum class ProcessState {
+    READY,
+    RUNNING,
+    WAITING,
+    FINISHED
+};
+
 class Process {
     
     struct LoopContext {
@@ -19,30 +26,6 @@ class Process {
     std::vector<LoopContext> loopStack;
 
     int quantumUsed = 0;
-    
-    private:
-        std::string processName;
-        unsigned long long totalNoOfCommands;
-        unsigned long long completedCommands;
-        int coreNum;
-        int processNum;
-        std::ofstream logFile;
-        std::chrono::time_point<std::chrono::system_clock> time;
-
-        bool finished = false;
-
-        static int NextProcessNum;
-
-        // for instruction
-        std::vector<Instruction> instructions;
-        std::unordered_map<std::string, uint16_t> variables;
-
-        int instructionPointer = 0;
-        int sleepUntilTick = -1;
-
-        std::vector<std::string> logLines;
-
-        mutable std::mutex processMutex;
 
     public:
         Process(std::string& pName, int totalCom);
@@ -124,4 +107,33 @@ class Process {
         void incrementQuantumUsed() {
             ++quantumUsed;
         }
+
+        ProcessState getProcessState();
+        void setProcessState(ProcessState state);
+
+    private:
+        std::string processName;
+        unsigned long long totalNoOfCommands;
+        unsigned long long completedCommands;
+        int coreNum;
+        int processNum;
+        std::ofstream logFile;
+        std::chrono::time_point<std::chrono::system_clock> time;
+
+        bool finished = false;
+
+        static int NextProcessNum;
+
+        // for instruction
+        std::vector<Instruction> instructions;
+        std::unordered_map<std::string, uint16_t> variables;
+
+        int instructionPointer = 0;
+        int sleepUntilTick = -1;
+
+        std::vector<std::string> logLines;
+
+        mutable std::mutex processMutex;
+        
+        ProcessState state = ProcessState::READY;
 };

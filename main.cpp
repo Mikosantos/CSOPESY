@@ -7,6 +7,7 @@
 #include "InstructionUtils.h"
 #include "FCFSScheduler.h"
 #include "RRScheduler.h"
+#include "FlatMemoryAllocator.h"
 
 /* Libraries */
 #include <string>
@@ -51,6 +52,9 @@ void stopBatchGeneration();
 
 std::unique_ptr<Scheduler> scheduler;
 Config config;
+
+std::shared_ptr<FlatMemoryAllocator> flatMemoryAllocator;
+//auto flatMemoryAllocator = std::dynamic_pointer_cast<FlatMemoryAllocator>(baseAllocator);
 
 std::atomic<bool> isBatchGenerating = false;
 std::thread batchGeneratorThread;
@@ -133,7 +137,7 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
     else if (cmd == "report-util") {
         report_util(processList, scheduler->getRunningProcesses());
     } 
-    
+
     else if (cmd == "screen" && args.size() == 1 && args[0] == "-ls") {
         printSystemSummary();
         consolePanel.listProcesses(processList, scheduler->getRunningProcesses());
@@ -378,19 +382,25 @@ void initialize() {
     std::cout << "  Min instructions   : " << ORANGE << config.minInstructions  << RESET << "\n";
     std::cout << "  Max instructions   : " << ORANGE << config.maxInstructions  << RESET << "\n";
     std::cout << "  Delay per exec     : " << ORANGE << config.delaysPerExec    << RESET << "\n";
-
-    std::cout << "\nStarting scheduler...\n";
+    std::cout << "  Max overall memory : " << ORANGE << config.maxOverallMem    << RESET << "\n";   // Added Max overall memory 
+    std::cout << "  Memory per frame   : " << ORANGE << config.memPerFrame      << RESET << "\n";   // Added Memory per frame
+    std::cout << "  Memory per process : " << ORANGE << config.memPerProc       << RESET << "\n";   // Memory per process
 
     if (config.schedulerType == "fcfs") {
         scheduler = std::make_unique<FCFSScheduler>(config.numCPUs, config.delaysPerExec);
-        scheduler->start();
+        //scheduler->start();                                                                     // Moved this to scheduler_start()
         std::cout << ORANGE << "[FCFS Scheduler started with "
                   << config.numCPUs << " cores]" << RESET << "\n\n";
     } 
     
     else if (config.schedulerType == "rr") {
-        scheduler = std::make_unique<RRScheduler>(config.numCPUs, config.delaysPerExec, config.quantumCycles);
-        scheduler->start();
+        flatMemoryAllocator = std::make_shared<FlatMemoryAllocator>(                            // Instantiate flatMemoryAllocator
+            config.maxOverallMem,
+            config.memPerFrame,
+            config.memPerProc
+        );
+        scheduler = std::make_unique<RRScheduler>(config.numCPUs, config.delaysPerExec, config.quantumCycles, config.maxOverallMem, config.memPerFrame, config.memPerProc, flatMemoryAllocator);
+        //scheduler->start();                                                                    // Moved this to scheduler_start()
         std::cout << ORANGE << "[RR Scheduler started with "
                   << config.numCPUs << " cores]" << RESET << "\n\n";
     } 
@@ -402,11 +412,23 @@ void initialize() {
 }
 
 void scheduler_start(std::vector<std::shared_ptr<Process>>& processList, ConsolePanel& consolePanel) {
-	startBatchGeneration(processList, consolePanel);
+	if (!scheduler) {
+        std::cout << "Scheduler not initialized. Please run 'initialize' first.\n";
+        return;
+    }
+    std::cout << "\nStarting scheduler...\n";
+    // Start batch first so readyQueue isn't empty
+    startBatchGeneration(processList, consolePanel);
+    // launch scheduler
+    scheduler->start();
 }
 
 void scheduler_stop() {
 	stopBatchGeneration();
+    /*
+    if(scheduler){
+        scheduler->stop();
+    }*/
 }
 
 void report_util(const std::vector<std::shared_ptr<Process>>& allProcesses,
@@ -541,7 +563,8 @@ void startBatchGeneration(std::vector<std::shared_ptr<Process>>& processList, Co
                 auto instructions = generateRandomInstructions(total);
                 for (const auto& instr : instructions)
                     newProc->addInstruction(instr);
-
+                
+                newProc->setProcessState(ProcessState::READY);
                 processList.push_back(newProc);
                 
                 // Create console screen

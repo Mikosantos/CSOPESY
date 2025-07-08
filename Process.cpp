@@ -337,3 +337,30 @@ void Process::appendLogLine(const std::string& line) {
 bool Process::isRunning() const {
     return !finished && coreNum != -1;
 }
+
+/**
+ * @brief Gets the current state of the process.
+ *
+ * This function returns the current state of the process, which can be one of the following:
+ * - ProcessState::READY
+ * - ProcessState::RUNNING
+ * - ProcessState::WAITING
+ * - ProcessState::FINISHED
+ *
+ * @return The current state of the process.
+ */
+ProcessState Process::getProcessState() {
+    return state;
+}
+
+/**
+ * @brief Sets the state of the process.
+ *
+ * This function updates the current state of the process to the specified new state.
+ * 
+ *
+ * @param newState The new state to assign to the process.
+ */
+void Process::setProcessState(ProcessState newState) {
+    state = newState;
+}
