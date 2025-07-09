@@ -82,8 +82,8 @@ void FlatMemoryAllocator::visualizeMemory(){
     
     buffer << "\nTimestamp: (" << std::put_time(&localTime, "%m/%d/%Y %I:%M:%S%p") << ")\n";
     buffer << "Number of processes in memory: " << getAmountOfAllocatedSlots() << "\n";
-    buffer << "Total external fragmentation in KB: " << getFragmentation() << "\n";
-    buffer << "----end---- = " << totalMemory << "\n";
+    buffer << "Total external fragmentation in KB: " << getFragmentation() << "\n\n";
+    buffer << "----end---- = " << totalMemory << "\n\n";
 
     uint32_t currentTop = totalMemory;
 
@@ -120,10 +120,10 @@ void FlatMemoryAllocator::displayMemoryPerCycle(uint32_t commandCounter)
     localtime_s(&localTime, &now);
 
     // Header
-    buffer << "\nTimestamp: (" << std::put_time(&localTime, "%m/%d/%Y %I:%M:%S%p") << ")\n";
+    buffer << "Timestamp: (" << std::put_time(&localTime, "%m/%d/%Y %I:%M:%S%p") << ")\n";
     buffer << "Number of processes in memory: " << getAmountOfAllocatedSlots() << "\n";
-    buffer << "Total external fragmentation in KB: " << getFragmentation() << "\n";
-    buffer << "----end---- = " << totalMemory << "\n";
+    buffer << "Total external fragmentation in KB: " << getFragmentation() << "\n\n";
+    buffer << "----end---- = " << totalMemory << "\n\n";
 
     uint32_t currentTop = totalMemory;
 
