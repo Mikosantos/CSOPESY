@@ -32,7 +32,7 @@ To set up the program:
 To compile the program using **g++** with **C++20** support, run the following command in the terminal or command prompt:
 
 ```bash
-g++ -std=c++20 main.cpp Console.cpp ConsolePanel.cpp Process.cpp Scheduler.cpp Config.cpp FCFSScheduler.cpp RRScheduler.cpp -o main.exe
+g++ -std=c++20 main.cpp Console.cpp ConsolePanel.cpp Process.cpp Scheduler.cpp Config.cpp FCFSScheduler.cpp RRScheduler.cpp FlatMemoryAllocator.cpp MemoryAllocator.cpp -o main.exe
 ```
 To run the program:
 ```bash
