@@ -66,13 +66,10 @@ void FlatMemoryAllocator::deallocate(std::shared_ptr<Process> process)
  * @brief Prints the current memory layout with state.
  */
 void FlatMemoryAllocator::visualizeMemory(){
-    // Starting memory
-    uint32_t totalMemory = maxOverallMem;  
-    // Each partition slot size     
+
+    uint32_t totalMemory = maxOverallMem;
     uint32_t slotSize = memPerProc;
-    // Buffer to build the output
-    std::ostringstream outputBuffer;  
-    uint32_t currentMemory = totalMemory;
+    std::ostringstream buffer;
 
     // Count of used slots.
     uint32_t numProcessesInMemory = getAmountOfAllocatedSlots();
@@ -82,40 +79,29 @@ void FlatMemoryAllocator::visualizeMemory(){
     time_t now = time(0);
     struct tm localTime;
     localtime_s(&localTime, &now);
-    outputBuffer << "\nTimestamp: (" << std::put_time(&localTime, "%m/%d/%Y %I:%M:%S%p") << ")\n";
+    
+    buffer << "\nTimestamp: (" << std::put_time(&localTime, "%m/%d/%Y %I:%M:%S%p") << ")\n";
+    buffer << "Number of processes in memory: " << getAmountOfAllocatedSlots() << "\n";
+    buffer << "Total external fragmentation in KB: " << getFragmentation() << "\n";
+    buffer << "----end---- = " << totalMemory << "\n";
 
-    outputBuffer << "Number of processes in memory: " << numProcessesInMemory << "\n";
-    outputBuffer << "Total external fragmentation in KB: " << getFragmentation() << "\n";
+    uint32_t currentTop = totalMemory;
 
-    outputBuffer << "----end---- = " << totalMemory << "\n";
+     for (const auto& partition : memoryPartitions) {
+        uint32_t upperLimit = currentTop;
+        uint32_t lowerLimit = currentTop - slotSize;
 
-    for (size_t i = 0; i < memoryPartitions.size(); ++i) {
-        const auto& partition = memoryPartitions[i];
-        if (partition.isAllocatable) {
-            outputBuffer << "\n";
-            totalMemory -= slotSize;
-        }
-        else if (partition.process) {
-            std::string processName = partition.process->getProcessName();
-
-
-            if (partition.process->getProcessState() == ProcessState::WAITING) { 
-                processName += " *";
-            }
-
-            outputBuffer << processName << "\n";
-            totalMemory -= slotSize;  
-            numProcessesInMemory++; 
+        if (partition.process) {
+            buffer << upperLimit << "\n";                        // Only print range for occupied
+            buffer << partition.process->getProcessName() << "\n";
+            buffer << lowerLimit << "\n\n";
         }
 
-        if (i < memoryPartitions.size() - 1) {
-            outputBuffer << totalMemory << "\n";
-        }
+        currentTop -= slotSize;
     }
 
-    totalExternalFragmentation = totalMemory;
-    outputBuffer << "----start---- = 0\n\n";
-    std::cout << outputBuffer.str();
+    buffer << "----start---- = 0\n\n";
+    std::cout << buffer.str();
 }   
 
 /**
