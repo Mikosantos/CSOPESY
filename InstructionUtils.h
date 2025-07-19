@@ -193,6 +193,90 @@ inline std::vector<Instruction> generateRandomInstructions(unsigned long long ta
     return result;
 }
 
+// NEW MO2 INSTRUCTION GENERATOR
+// This function generates fixed instructions based on a vector of raw instruction strings.
+
+// TO DO: FOR LOOP
+inline std::vector<Instruction> generateFixedInstructions(const std::vector<std::string>& rawInstructions) {
+    std::vector<Instruction> result;
+
+    for (const auto& instrLine : rawInstructions) {
+        std::istringstream iss(instrLine);
+        std::string token;
+        iss >> token;
+
+        Instruction instr;
+
+        if (token == "PRINT") {
+            instr.type = InstructionType::PRINT;
+
+            std::string restOfLine;
+            getline(iss, restOfLine);
+
+            // Remove parentheses and quotes if present
+            size_t start = restOfLine.find_first_of("\"(");
+            size_t end = restOfLine.find_last_of("\")");
+            if (start != std::string::npos && end != std::string::npos && end > start) {
+                instr.message = restOfLine.substr(start + 1, end - start - 1);
+            } else {
+                instr.message = restOfLine; // fallback
+            }
+        }
+
+        else if (token == "DECLARE") {
+            instr.type = InstructionType::DECLARE;
+            iss >> instr.var1 >> instr.value;
+        }
+
+        else if (token == "ADD") {
+            instr.type = InstructionType::ADD;
+            iss >> instr.var1 >> instr.var2 >> instr.var3;
+
+            instr.var2IsImmediate = isdigit(instr.var2[0]);
+            instr.var3IsImmediate = isdigit(instr.var3[0]);
+
+            if (instr.var2IsImmediate) instr.var2ImmediateValue = std::stoi(instr.var2);
+            if (instr.var3IsImmediate) instr.var3ImmediateValue = std::stoi(instr.var3);
+        }
+
+        else if (token == "SUBTRACT") {
+            instr.type = InstructionType::SUBTRACT;
+            iss >> instr.var1 >> instr.var2 >> instr.var3;
+
+            instr.var2IsImmediate = isdigit(instr.var2[0]);
+            instr.var3IsImmediate = isdigit(instr.var3[0]);
+
+            if (instr.var2IsImmediate) instr.var2ImmediateValue = std::stoi(instr.var2);
+            if (instr.var3IsImmediate) instr.var3ImmediateValue = std::stoi(instr.var3);
+        }
+
+        else if (token == "SLEEP") {
+            instr.type = InstructionType::SLEEP;
+            iss >> instr.sleepTicks;
+        }
+
+        else if (token == "READ") {
+            instr.type = InstructionType::READ;
+            iss >> instr.var1 >> instr.memoryAddress;
+        }
+
+        else if (token == "WRITE") {
+            instr.type = InstructionType::WRITE;
+            iss >> instr.memoryAddress >> instr.var1;
+        }
+
+        else {
+            std::cout << "Unknown instruction: " << token << "\n";
+            continue; // skip invalid
+        }
+
+        result.push_back(instr);
+    }
+
+    return result;
+}
+
+
 /*
     This function counts the total number of instructions in a vector of instructions,
     including those expanded from FOR loops.

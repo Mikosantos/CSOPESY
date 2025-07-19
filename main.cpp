@@ -278,6 +278,26 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
             cout << "Invalid command. Instruction count must be between 1 and 50.\n\n";
             return;
         }
+
+        // Create process
+        clearToProcessScreen();
+        auto newProc = make_shared<Process>(procName, rawInstructions.size(), memSize);
+
+        // Parse and add fixed instructions
+        auto fixedInstructions = generateFixedInstructions(rawInstructions);
+        for (const auto& instr : fixedInstructions) {
+            newProc->addInstruction(instr);
+        }
+
+        processList.push_back(newProc);
+
+        auto procConsole = make_shared<Console>(procName, 0, rawInstructions.size(), newProc->getProcessNo());
+        consolePanel.addConsolePanel(procConsole);
+        consolePanel.setCurrentScreen(procConsole);
+
+        displayProcessScreen(newProc);
+
+        scheduler->addProcess(newProc);
     }
     // 
 
