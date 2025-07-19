@@ -44,8 +44,10 @@ class Process {
 
         mutable std::mutex processMutex;
 
+        int memSize = 0;  // in bytes
+
     public:
-        Process(std::string& pName, int totalCom);
+        Process(std::string& pName, int totalCom, int memSize);  // new signature
 
         //Getters
         std::string getTime();

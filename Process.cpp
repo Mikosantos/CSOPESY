@@ -11,14 +11,14 @@
 
 int Process::NextProcessNum = 1;
 
-Process::Process(std::string& pName, int totalCom)
-: processName(pName), totalNoOfCommands(totalCom) {
+Process::Process(std::string& pName, int totalCom, int memSize)
+: processName(pName), totalNoOfCommands(totalCom), memSize(memSize) {
     time = std::chrono::system_clock::now();
     setCompletedCommands(0);
     setCoreNum(-1);
     setProcessNum(NextProcessNum++);
     setFinished(false);
-};
+}
 
 // getters ---------------------------------------------------
 std::string Process::getTime() {

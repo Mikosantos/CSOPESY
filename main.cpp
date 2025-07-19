@@ -48,6 +48,7 @@ void displayProcessScreen(const std::shared_ptr<Process>& proc);
 void printLastUpdated();
 void startBatchGeneration(std::vector<std::shared_ptr<Process>>&, ConsolePanel&);
 void stopBatchGeneration();
+string trim(const string& str);
 
 std::unique_ptr<Scheduler> scheduler;
 Config config;
@@ -137,10 +138,12 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
     // MO2 NEW COMMANDS
     else if (cmd == "process-smi") {
         cout << "Printing process-smi!\n\n";
+        // TODO: Implement process-smi command
     }
 
     else if (cmd == "vmstat") {
         cout << "Printing vmstat!\n\n";
+        // TODO: Implement vmstat command
     }
 
     // 
@@ -150,8 +153,9 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
         consolePanel.listProcesses(processList, scheduler->getRunningProcesses());
     } 
     
-    else if (cmd == "screen" && args.size() >= 2 && args[0] == "-s") {
+    else if (cmd == "screen" && args.size() >= 3 && args[0] == "-s") {
         string procName = args[1];
+        string memSizeStr = args[2];
 
         for (const auto& c : screens) {
             if (c->getConsoleName() == procName) {
@@ -160,10 +164,23 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
             }
         }
 
+        unsigned int memSize;
+        try {
+            memSize = std::stoi(memSizeStr);
+        } catch (const std::exception&) {
+            cout << "Invalid memory size format.\n\n";
+            return;
+        }
+
+        if (memSize < 64 || memSize > 65536 || (memSize & (memSize - 1)) != 0) {
+            cout << "Invalid memory allocation! Must be a power of 2 between 64 and 65536.\n\n";
+            return;
+        }
+
         unsigned long long total = config.minInstructions + rand() % (config.maxInstructions - config.minInstructions + 1);
 
         clearToProcessScreen();
-        auto newProc = make_shared<Process>(procName, total);
+        auto newProc = make_shared<Process>(procName, total, memSize); // new
 
         auto instructions = generateRandomInstructions(total);
         for (const auto& instr : instructions) {
@@ -214,6 +231,55 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
         displayProcessScreen(targetProcess);
 
     } 
+
+    // NEW MO2 COMMAND
+    else if (cmd == "screen" && args.size() >= 3 && args[0] == "-c") {
+        string procName = args[1];
+        string memSizeStr = args[2];
+
+        unsigned int memSize;
+        try {
+            memSize = stoi(memSizeStr);
+        } catch (const exception&) {
+            cout << "Invalid memory size format.\n\n";
+            return;
+        }
+
+        if (memSize < 64 || memSize > 65536 || (memSize & (memSize - 1)) != 0) {
+            cout << "Invalid memory allocation! Must be a power of 2 between 64 and 65536.\n\n";
+            return;
+        }
+
+        // Combine remaining arguments into a single instruction string
+        string instructionString;
+        for (size_t i = 3; i < args.size(); ++i) {
+            instructionString += args[i] + " ";
+        }
+
+        // Remove surrounding quotes if present
+        if (instructionString.front() == '"' && instructionString.back() == '"') {
+            instructionString = instructionString.substr(1, instructionString.size() - 2);
+        }
+
+        // Split by semicolon
+        vector<string> rawInstructions;
+        istringstream ss(instructionString);
+        string token;
+
+        while (getline(ss, token, ';')) {
+            string instr = trim(token);
+            if (!instr.empty()) {
+                rawInstructions.push_back(instr);
+            }
+        }
+
+        // Check instruction count
+        if (rawInstructions.size() < 1 || rawInstructions.size() > 50) {
+            cout << "Invalid command. Instruction count must be between 1 and 50.\n\n";
+            return;
+        }
+    }
+    // 
 
     else {
         cout << "Unknown command! Type \"help\" for commandlist.\n\n";
@@ -496,18 +562,19 @@ void printSystemSummary() {
 }
 
 void printHelpMenu() {
-    cout << "  initialize        - Initialize system\n";
-    cout << "  screen -s <name>  - Start new screen\n";
-    cout << "  screen -r <name>  - Resume existing screen\n";
-    cout << "  screen -ls        - List all screen processes\n";
-    cout << "  scheduler-start   - Run scheduler start\n";
-    cout << "  scheduler-stop    - Stop scheduler\n";
-    cout << "  report-util       - Display utilization report\n";
-    cout << "  process-smi       - Display memory usage summary per process\n";
-    cout << "  vmstat            - Display detailed system memory and process statistics\n";
-    cout << "  clear             - Clear the screen\n";
-    cout << "  help              - Show this help menu\n";
-    cout << "  exit              - Exit the program\n\n";
+    cout << "  initialize                       - Initialize system\n";
+    cout << "  screen -s <name>                 - Start new screen\n";
+    cout << "  screen -r <name>                 - Resume existing screen\n";
+    cout << "  screen -c <name> <mem_size> \"<instructions>\"     - User defined instruction\n";
+    cout << "  screen -ls                       - List all screen processes\n";
+    cout << "  scheduler-start                  - Run scheduler start\n";
+    cout << "  scheduler-stop                   - Stop scheduler\n";
+    cout << "  report-util                      - Display utilization report\n";
+    cout << "  process-smi                      - Display memory usage summary per process\n";
+    cout << "  vmstat                           - Display detailed system memory and process statistics\n";
+    cout << "  clear                            - Clear the screen\n";
+    cout << "  help                             - Show this help menu\n";
+    cout << "  exit                             - Exit the program\n\n";
 }
 
 void handleExit() {
@@ -548,7 +615,14 @@ void startBatchGeneration(std::vector<std::shared_ptr<Process>>& processList, Co
 
                 // Random instruction count
                 unsigned long long total = config.minInstructions + rand() % (config.maxInstructions - config.minInstructions + 1);
-                auto newProc = std::make_shared<Process>(procName, total);
+
+                // new process to support MO2
+                int exponent = 6 + (rand() % (16 - 6 + 1)); // 2^6 to 2^16
+                int memSize = 1 << exponent;
+                auto newProc = std::make_shared<Process>(procName, total, memSize);
+                
+                // Previous code was:
+                // auto newProc = std::make_shared<Process>(procName, total);
 
                 // Generate random instructions
                 auto instructions = generateRandomInstructions(total);
@@ -587,4 +661,11 @@ void stopBatchGeneration() {
 
     std::cout << "Stopped batch process generation.\n";
     std::cout << "Total processes generated: " << batchProcessCount << "\n\n";
+}
+
+// HELPER FUNCTIONS
+string trim(const string& str) {
+    size_t first = str.find_first_not_of(" \t");
+    size_t last = str.find_last_not_of(" \t");
+    return (first == string::npos) ? "" : str.substr(first, (last - first + 1));
 }
