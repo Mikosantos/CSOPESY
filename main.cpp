@@ -133,6 +133,17 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
     else if (cmd == "report-util") {
         report_util(processList, scheduler->getRunningProcesses());
     } 
+
+    // MO2 NEW COMMANDS
+    else if (cmd == "process-smi") {
+        cout << "Printing process-smi!\n\n";
+    }
+
+    else if (cmd == "vmstat") {
+        cout << "Printing vmstat!\n\n";
+    }
+
+    // 
     
     else if (cmd == "screen" && args.size() == 1 && args[0] == "-ls") {
         printSystemSummary();
@@ -203,7 +214,7 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
         displayProcessScreen(targetProcess);
 
     } 
-    
+
     else {
         cout << "Unknown command! Type \"help\" for commandlist.\n\n";
     }
@@ -488,11 +499,13 @@ void printHelpMenu() {
     cout << "  initialize        - Initialize system\n";
     cout << "  screen -s <name>  - Start new screen\n";
     cout << "  screen -r <name>  - Resume existing screen\n";
+    cout << "  screen -ls        - List all screen processes\n";
     cout << "  scheduler-start   - Run scheduler start\n";
     cout << "  scheduler-stop    - Stop scheduler\n";
     cout << "  report-util       - Display utilization report\n";
+    cout << "  process-smi       - Display memory usage summary per process\n";
+    cout << "  vmstat            - Display detailed system memory and process statistics\n";
     cout << "  clear             - Clear the screen\n";
-    cout << "  screen -ls        - List all screen processes\n";
     cout << "  help              - Show this help menu\n";
     cout << "  exit              - Exit the program\n\n";
 }
