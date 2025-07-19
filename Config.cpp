@@ -30,6 +30,12 @@ Config loadConfig(const std::string& filePath) {  // ✅ No default here
         else if (key == "min-ins") config.minInstructions = std::stoull(value);
         else if (key == "max-ins") config.maxInstructions = std::stoull(value);
         else if (key == "delays-per-exec") config.delaysPerExec = std::stoull(value);
+
+        // MO2 NEW FIELDS
+        else if (key == "max-overall-mem") config.maxOverallMemory = std::stoull(value);
+        else if (key == "mem-per-frame") config.memPerFrame = std::stoull(value);
+        else if (key == "min-mem-per-proc") config.minMemPerProcess = std::stoull(value);
+        else if (key == "max-mem-per-proc") config.maxMemPerProcess = std::stoull(value);
     }
 
     return config;
