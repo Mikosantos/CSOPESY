@@ -369,18 +369,18 @@ void Process::simulateIOWrite(const std::string& varName, uint16_t value) {
     // TODO:
 }
 
-void Process::initializePages(int memPerFrame) {
+void Process::initializePages(size_t  memPerFrame) {
     numPages = (memSize + memPerFrame - 1) / memPerFrame; // ceil division
     pageTable.resize(numPages, -1); // -1 means page not loaded (demand paging)
 }
 
-void Process::setPageFrame(int pageIndex, int frameNo) {
+void Process::setPageFrame(size_t  pageIndex, int frameNo) {
     if (pageIndex >= 0 && pageIndex < pageTable.size()) {
         pageTable[pageIndex] = frameNo;
     }
 }
 
-bool Process::isPageLoaded(int pageIndex) const {
+bool Process::isPageLoaded(size_t  pageIndex) const {
     if (pageIndex < 0 || pageIndex >= pageTable.size()) return false;
     return pageTable[pageIndex] != -1;
 }

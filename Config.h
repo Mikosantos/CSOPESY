@@ -9,10 +9,10 @@ struct Config {
     unsigned long long minInstructions;
     unsigned long long maxInstructions;
     unsigned long long delaysPerExec;
-    unsigned long long maxOverallMemory;
-    unsigned long long memPerFrame;
-    unsigned long long minMemPerProcess;
-    unsigned long long maxMemPerProcess;
+    size_t maxOverallMemory;
+    size_t memPerFrame;
+    size_t minMemPerProcess;
+    size_t maxMemPerProcess;
 };
 
 Config loadConfig(const std::string& filePath = "config.txt");
