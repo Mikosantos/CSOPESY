@@ -126,4 +126,7 @@ class Process {
         void incrementQuantumUsed() {
             ++quantumUsed;
         }
+
+        uint16_t simulateIORead(const std::string& varName);
+        void simulateIOWrite(const std::string& varName, uint16_t value);
 };

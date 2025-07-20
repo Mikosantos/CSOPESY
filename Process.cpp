@@ -268,6 +268,24 @@ bool Process::executeInstruction(int coreId, int currentTick) {
                 // DO NOT increment completedCommands here because the loop body will be counted
             }
             break;
+
+        case InstructionType::READ: {
+            uint16_t readValue = simulateIORead(instr.var1); // Simulate read from "device" or "file"
+            setVariable(instr.var1, readValue);
+            log << instr.executedTimestamp << "   Core: " << coreId << "   ";
+            log << "READ " << instr.var1 << " => " << readValue << "\n";
+            completedCommands++;
+            break;
+        }
+
+        case InstructionType::WRITE: {
+            uint16_t val = getVariable(instr.var1);
+            simulateIOWrite(instr.var1, val); // Simulate write to "device" or "file"
+            log << instr.executedTimestamp << "   Core: " << coreId << "   ";
+            log << "WRITE " << instr.var1 << " => " << val << "\n";
+            completedCommands++;
+            break;
+        }
     }
 
     appendLogLine(log.str());
@@ -336,4 +354,17 @@ void Process::appendLogLine(const std::string& line) {
 // A process is considered running if it is not finished and has a valid core number assigned.
 bool Process::isRunning() const {
     return !finished && coreNum != -1;
+}
+
+// NEW MO2 INSTRUCTION SIMULATION FUNCTIONS
+uint16_t Process::simulateIORead(const std::string& varName) {
+    // For simulation, just return a random value
+    return rand() % 256; // Simulate reading from I/O
+    // TODO:
+}
+
+void Process::simulateIOWrite(const std::string& varName, uint16_t value) {
+    // For simulation, just print to console or log
+    // std::cout << "[IO] Writing " << value << " to " << varName << "\n";
+    // TODO:
 }
