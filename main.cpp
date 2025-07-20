@@ -181,6 +181,7 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
 
         clearToProcessScreen();
         auto newProc = make_shared<Process>(procName, total, memSize); // new
+        newProc->initializePages(config.memPerFrame);
 
         auto instructions = generateRandomInstructions(total);
         for (const auto& instr : instructions) {
@@ -636,10 +637,12 @@ void startBatchGeneration(std::vector<std::shared_ptr<Process>>& processList, Co
                 // Random instruction count
                 unsigned long long total = config.minInstructions + rand() % (config.maxInstructions - config.minInstructions + 1);
 
-                // new process to support MO2
-                int exponent = 6 + (rand() % (16 - 6 + 1)); // 2^6 to 2^16
-                int memSize = 1 << exponent;
+                // Generate random memory size M between min-mem-per-proc and max-mem-per-proc
+                unsigned long long memSize = config.minMemPerProcess + rand() % (config.maxMemPerProcess - config.minMemPerProcess + 1);
+
+                // new process creation to support MO2
                 auto newProc = std::make_shared<Process>(procName, total, memSize);
+                newProc->initializePages(config.memPerFrame);
                 
                 // Previous code was:
                 // auto newProc = std::make_shared<Process>(procName, total);

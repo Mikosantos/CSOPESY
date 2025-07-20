@@ -356,7 +356,7 @@ bool Process::isRunning() const {
     return !finished && coreNum != -1;
 }
 
-// NEW MO2 INSTRUCTION SIMULATION FUNCTIONS
+// NEW MO2 INSTRUCTION SIMULATION FUNCTIONS ==================================================
 uint16_t Process::simulateIORead(const std::string& varName) {
     // For simulation, just return a random value
     return rand() % 256; // Simulate reading from I/O
@@ -368,3 +368,20 @@ void Process::simulateIOWrite(const std::string& varName, uint16_t value) {
     // std::cout << "[IO] Writing " << value << " to " << varName << "\n";
     // TODO:
 }
+
+void Process::initializePages(int memPerFrame) {
+    numPages = (memSize + memPerFrame - 1) / memPerFrame; // ceil division
+    pageTable.resize(numPages, -1); // -1 means page not loaded (demand paging)
+}
+
+void Process::setPageFrame(int pageIndex, int frameNo) {
+    if (pageIndex >= 0 && pageIndex < pageTable.size()) {
+        pageTable[pageIndex] = frameNo;
+    }
+}
+
+bool Process::isPageLoaded(int pageIndex) const {
+    if (pageIndex < 0 || pageIndex >= pageTable.size()) return false;
+    return pageTable[pageIndex] != -1;
+}
+

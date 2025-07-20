@@ -45,6 +45,10 @@ class Process {
         mutable std::mutex processMutex;
 
         int memSize = 0;  // in bytes
+        int numPages;              // Number of virtual pages required
+
+        std::vector<int> pageTable; // Maps virtual pages to frame numbers
+                                    // -1 if page is not loaded (page fault will occur)
 
     public:
         Process(std::string& pName, int totalCom, int memSize);  // new signature
@@ -129,4 +133,14 @@ class Process {
 
         uint16_t simulateIORead(const std::string& varName);
         void simulateIOWrite(const std::string& varName, uint16_t value);
+
+        // NEW MO2 FUNCTIONS ======================================
+        int getMemSize() const { return memSize; }
+        int getNumPages() const { return numPages; }
+        const std::vector<int>& getPageTable() const { return pageTable; }
+
+        void initializePages(int memPerFrame); // New function to compute pages & initialize pageTable
+        void setPageFrame(int pageIndex, int frameNo); // Update page table mapping
+
+        bool isPageLoaded(int pageIndex) const; // Check if the page is in memory
 };
