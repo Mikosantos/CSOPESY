@@ -51,6 +51,10 @@ class Process {
         std::vector<int> pageTable; // Maps virtual pages to frame numbers
                                     // -1 if page is not loaded (page fault will occur)
 
+        bool memoryViolation = false;
+        std::string violationTime;
+        size_t violationAddress; // The invalid memory address accessed
+
     public:
         Process(std::string& pName, int totalCom, int memSize);  // new signature
 
@@ -144,4 +148,23 @@ class Process {
         void setPageFrame(size_t  pageIndex, int frameNo); // Update page table mapping
 
         bool isPageLoaded(size_t  pageIndex) const; // Check if the page is in memory
+
+        void setMemoryViolation(size_t address) {
+            memoryViolation = true;
+            violationTime = getRawTime();
+            violationAddress = address;
+            setFinished(true);
+        }
+
+        bool hasMemoryViolation() const {
+            return memoryViolation;
+        }
+
+        std::string getViolationTime() const {
+            return violationTime;
+        }
+
+        size_t getViolationAddress() const {
+            return violationAddress;
+        }
 };

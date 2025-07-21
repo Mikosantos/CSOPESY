@@ -222,11 +222,25 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
             }
         }
 
-        if (!foundScreen || !foundProcess || targetProcess->isFinished()) {
+        if (!foundProcess) {
             cout << "Process '" << procName << "' not found.\n\n";
             return;
         }
 
+        if (targetProcess->hasMemoryViolation()) {
+            std::ostringstream oss;
+            oss << "Process '" << procName << "' shut down due to memory access violation error that occurred at ";
+            oss << targetProcess->getViolationTime() << ". ";
+            oss << "0x" << std::hex << targetProcess->getViolationAddress() << " invalid.\n\n";
+            cout << oss.str();
+            return;
+        }
+
+        if (!foundScreen || targetProcess->isFinished()) {
+            cout << "Process '" << procName << "' not found.\n\n";
+            return;
+        }
+        
         clearToProcessScreen();
         consolePanel.setCurrentScreen(currentPanel);
         displayProcessScreen(targetProcess);
