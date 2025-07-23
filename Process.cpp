@@ -4,6 +4,7 @@
 #include <sstream>
 #include <iostream>
 #include <iomanip>
+#include "utils.h"
 
 #define ORANGE "\033[38;5;208m"
 #define BLUE   "\033[34m"
@@ -192,6 +193,7 @@ bool Process::isSleeping(int currentTick) const {
     and executes it based on its type. It also handles different instructions, including nested for loops and updates the
     process's state accordingly.
 */
+// TODO: FIX PRINT/READ/WRITE INSTRUCTIONS
 bool Process::executeInstruction(int coreId, int currentTick) {
     Instruction instr;
 
@@ -227,13 +229,47 @@ bool Process::executeInstruction(int coreId, int currentTick) {
     instr.executedCore = coreId;
 
     std::ostringstream log;
+    std::string msg;
+
     // Execute instruction and increment completedCommands for every executed instruction
     switch (instr.type) {
-        case InstructionType::PRINT:            
+        case InstructionType::PRINT: {
             log << instr.executedTimestamp << "   Core: " << coreId << "   ";
-            log << "\"Hello world from " << processName << "!\" \n";
-            completedCommands++; 
+            std::string msg = instr.message;
+
+            // Handle concatenation if "+" is present
+            size_t plusPos = msg.find("+");
+            if (plusPos != std::string::npos) {
+                std::string left = trim(msg.substr(0, plusPos));
+                std::string right = trim(msg.substr(plusPos + 1));
+
+                // Remove quotes from the left part if present
+                if (!left.empty() && left.front() == '"' && left.back() == '"') {
+                    left = left.substr(1, left.size() - 2);
+                }
+
+                // Get variable value or fallback
+                std::string rightVal;
+                if (variables.find(right) != variables.end()) {
+                    rightVal = std::to_string(getVariable(right));
+                } else {
+                    rightVal = "[undefined:" + right + "]";
+                }
+
+                msg = left + rightVal;
+            }
+            else {
+                std::string trimmed = trim(msg);
+                if (variables.find(trimmed) != variables.end()) {
+                    msg = std::to_string(getVariable(trimmed));
+                }
+            }
+
+            // Just print as-is if no concatenation
+            log << "\"" << msg << "\"\n";
+            completedCommands++;
             break;
+        }
 
         case InstructionType::DECLARE:
             declareVariable(instr.var1, instr.value);
@@ -270,19 +306,13 @@ bool Process::executeInstruction(int coreId, int currentTick) {
             break;
 
         case InstructionType::READ: {
-            uint16_t readValue = simulateIORead(instr.var1); // Simulate read from "device" or "file"
-            setVariable(instr.var1, readValue);
-            log << instr.executedTimestamp << "   Core: " << coreId << "   ";
-            log << "READ " << instr.var1 << " => " << readValue << "\n";
+            // TODO: Implement actual memory read simulation
             completedCommands++;
             break;
         }
 
         case InstructionType::WRITE: {
-            uint16_t val = getVariable(instr.var1);
-            simulateIOWrite(instr.var1, val); // Simulate write to "device" or "file"
-            log << instr.executedTimestamp << "   Core: " << coreId << "   ";
-            log << "WRITE " << instr.var1 << " => " << val << "\n";
+            // TODO: Implement actual memory write simulation
             completedCommands++;
             break;
         }

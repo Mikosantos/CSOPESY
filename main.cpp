@@ -7,6 +7,7 @@
 #include "InstructionUtils.h"
 #include "FCFSScheduler.h"
 #include "RRScheduler.h"
+#include "utils.h"
 
 /* Libraries */
 #include <string>
@@ -183,7 +184,7 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
         auto newProc = make_shared<Process>(procName, total, memSize); // new
         newProc->initializePages(config.memPerFrame);
 
-        auto instructions = generateRandomInstructions(total);
+        auto instructions = generateRandomInstructions(total, procName);
         for (const auto& instr : instructions) {
             newProc->addInstruction(instr);
         }
@@ -271,21 +272,34 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
             instructionString += args[i] + " ";
         }
 
-        // Remove surrounding quotes if present
-        if (instructionString.front() == '"' && instructionString.back() == '"') {
+        // Trim and remove surrounding quotes
+        instructionString = trim(instructionString);
+        if (!instructionString.empty() && instructionString.front() == '"' && instructionString.back() == '"') {
             instructionString = instructionString.substr(1, instructionString.size() - 2);
         }
 
-        // Split by semicolon
-        vector<string> rawInstructions;
-        istringstream ss(instructionString);
-        string token;
+        // Smarter semicolon split: only split outside quotes
+        std::vector<std::string> rawInstructions;
+        std::string currentInstr;
+        bool insideQuotes = false;
 
-        while (getline(ss, token, ';')) {
-            string instr = trim(token);
-            if (!instr.empty()) {
-                rawInstructions.push_back(instr);
+        for (char c : instructionString) {
+            if (c == '"') {
+                insideQuotes = !insideQuotes;
             }
+
+            if (c == ';' && !insideQuotes) {
+                std::string trimmed = trim(currentInstr);
+                if (!trimmed.empty()) rawInstructions.push_back(trimmed);
+                currentInstr.clear();
+            } else {
+                currentInstr += c;
+            }
+        }
+
+        if (!currentInstr.empty()) {
+            std::string trimmed = trim(currentInstr);
+            if (!trimmed.empty()) rawInstructions.push_back(trimmed);
         }
 
         // Check instruction count
@@ -483,13 +497,18 @@ void initialize() {
     std::cout << ORANGE << "[Initializing System...]\n" << RESET;
 
     std::cout << "Loaded configuration:\n";
-    std::cout << "  Scheduler type     : " << ORANGE << config.schedulerType    << RESET << "\n";
+    std::cout << "  Scheduler Type     : " << ORANGE << config.schedulerType    << RESET << "\n";
     std::cout << "  Number of CPUs     : " << ORANGE << config.numCPUs          << RESET << "\n";
-    std::cout << "  Quantum cycles     : " << ORANGE << config.quantumCycles    << RESET << "\n";
-    std::cout << "  Batch process freq : " << ORANGE << config.batchProcessFreq << RESET << "\n";
-    std::cout << "  Min instructions   : " << ORANGE << config.minInstructions  << RESET << "\n";
-    std::cout << "  Max instructions   : " << ORANGE << config.maxInstructions  << RESET << "\n";
-    std::cout << "  Delay per exec     : " << ORANGE << config.delaysPerExec    << RESET << "\n";
+    std::cout << "  Quantum Cycles     : " << ORANGE << config.quantumCycles    << RESET << "\n";
+    std::cout << "  Batch Process Freq : " << ORANGE << config.batchProcessFreq << RESET << "\n";
+    std::cout << "  Min Instructions   : " << ORANGE << config.minInstructions  << RESET << "\n";
+    std::cout << "  Max Instructions   : " << ORANGE << config.maxInstructions  << RESET << "\n";
+    std::cout << "  Delay Per Exec     : " << ORANGE << config.delaysPerExec    << RESET << "\n\n";
+
+    std::cout << "  Max Overall Mem    : " << ORANGE << config.maxOverallMemory << RESET << "\n";
+    std::cout << "  Mem Per Frame      : " << ORANGE << config.memPerFrame      << RESET << "\n";
+    std::cout << "  Min Mem Per Proc   : " << ORANGE << config.minMemPerProcess << RESET << "\n";
+    std::cout << "  Max Mem Per Proc   : " << ORANGE << config.maxMemPerProcess << RESET << "\n";
 
     std::cout << "\nStarting scheduler...\n";
 
@@ -662,7 +681,7 @@ void startBatchGeneration(std::vector<std::shared_ptr<Process>>& processList, Co
                 // auto newProc = std::make_shared<Process>(procName, total);
 
                 // Generate random instructions
-                auto instructions = generateRandomInstructions(total);
+                auto instructions = generateRandomInstructions(total, procName);
                 for (const auto& instr : instructions)
                     newProc->addInstruction(instr);
 
@@ -698,11 +717,4 @@ void stopBatchGeneration() {
 
     std::cout << "Stopped batch process generation.\n";
     std::cout << "Total processes generated: " << batchProcessCount << "\n\n";
-}
-
-// HELPER FUNCTIONS
-string trim(const string& str) {
-    size_t first = str.find_first_not_of(" \t");
-    size_t last = str.find_last_not_of(" \t");
-    return (first == string::npos) ? "" : str.substr(first, (last - first + 1));
 }
