@@ -4,6 +4,8 @@
 #include <algorithm>
 #include <sstream>
 
+// TODO: CHECK IMPLEMENTATION OF MEMORY MANAGER (DEMAND PAGING, PAGE REPLACEMENT, ETC.)
+
 MemoryManager::MemoryManager(size_t totalMemory, size_t pageSize)
     : totalMemory(totalMemory), pageSize(pageSize), pagesPagedIn(0), pagesPagedOut(0) {
 
@@ -125,6 +127,8 @@ uint16_t MemoryManager::readByte(int pid, int virtualAddress) {
 }
 
 void MemoryManager::savePageToBackingStore(int pid, int pageNo, int frameNo) {
+    // TODO: FIX THIS
+    // FORMAT SHOULD BE PROCESS_NAME IDK WHAT ELSE
     std::ofstream ofs("csopesy-backing-store.txt", std::ios::app);
     if (!ofs.is_open()) return;
 
