@@ -12,8 +12,8 @@
 
 int Process::NextProcessNum = 1;
 
-Process::Process(std::string& pName, int totalCom, int memSize)
-: processName(pName), totalNoOfCommands(totalCom), memSize(memSize) {
+Process::Process(std::string& pName, int totalCom, size_t memSize, std::shared_ptr<MemoryManager> memManager)
+: processName(pName), totalNoOfCommands(totalCom), memSize(memSize), memManager(memManager) {
     time = std::chrono::system_clock::now();
     setCompletedCommands(0);
     setCoreNum(-1);
@@ -193,7 +193,6 @@ bool Process::isSleeping(int currentTick) const {
     and executes it based on its type. It also handles different instructions, including nested for loops and updates the
     process's state accordingly.
 */
-// TODO: FIX PRINT/READ/WRITE INSTRUCTIONS
 bool Process::executeInstruction(int coreId, int currentTick) {
     Instruction instr;
 
@@ -223,6 +222,17 @@ bool Process::executeInstruction(int coreId, int currentTick) {
             return false;
         }
         instr = instructions[instructionPointer++];
+    }
+
+    //handle MEMORY ACCESS instruction
+    if (instr.type == InstructionType::READ || instr.type == InstructionType::WRITE) {
+        int virtualAddr = instr.memoryAddress;
+        int pageNo = virtualAddr / memManager->getPageSize();
+
+        if (!memManager->ensurePageLoaded(processNum, pageNo)) {
+            // Page not loaded and no replacement possible — skip this turn
+            return false;
+        }
     }
 
     instr.executedTimestamp = generateCurrentTimestamp();
@@ -306,13 +316,31 @@ bool Process::executeInstruction(int coreId, int currentTick) {
             break;
 
         case InstructionType::READ: {
-            // TODO: Implement actual memory read simulation
+            try {
+                uint16_t value = readFromMemory(instr.memoryAddress);  // already an int!
+                setVariable(instr.var1, value);
+                log << "READ " << instr.var1 << " <- [0x" << std::hex << instr.memoryAddress << "] = " << std::dec << value << "\n";
+            } catch (const std::exception& e) {
+                log << "Memory READ failed at address: 0x" << std::hex << instr.memoryAddress << " (" << e.what() << ")\n";
+                setFinished(true);  // simulate process kill
+                break;
+            }
+
             completedCommands++;
             break;
         }
 
         case InstructionType::WRITE: {
-            // TODO: Implement actual memory write simulation
+            try {
+                uint16_t value = getVariable(instr.var1);
+                writeToMemory(instr.memoryAddress, value);
+                log << "WRITE [0x" << std::hex << instr.memoryAddress << "] <- " << std::dec << value << "\n";
+            } catch (const std::exception& e) {
+                log << "Memory WRITE failed at address: 0x" << std::hex << instr.memoryAddress << " (" << e.what() << ")\n";
+                setFinished(true);  // simulate process kill
+                break;
+            }
+
             completedCommands++;
             break;
         }
@@ -387,21 +415,32 @@ bool Process::isRunning() const {
 }
 
 // NEW MO2 INSTRUCTION SIMULATION FUNCTIONS ==================================================
-uint16_t Process::simulateIORead(const std::string& varName) {
-    // For simulation, just return a random value
-    return rand() % 256; // Simulate reading from I/O
-    // TODO:
+void Process::writeToMemory(int vAddr, uint16_t value) {
+    if (vAddr < 0 || vAddr + 1 >= static_cast<int>(memSize)) {
+        // std::cerr << "[ERROR] Process " << processName
+        //           << " tried to WRITE to invalid address: 0x"
+        //           << std::hex << vAddr << " (memSize: " << std::dec << memSize << ")\n";
+        setMemoryViolation(vAddr);
+        return;
+    }
+    memManager->writeByte(processNum, vAddr, value);
 }
 
-void Process::simulateIOWrite(const std::string& varName, uint16_t value) {
-    // For simulation, just print to console or log
-    // std::cout << "[IO] Writing " << value << " to " << varName << "\n";
-    // TODO:
+uint16_t Process::readFromMemory(int vAddr) {
+    if (vAddr < 0 || vAddr + 1 >= static_cast<int>(memSize)) {
+        // std::cerr << "[ERROR] Process " << processName
+        //           << " tried to READ from invalid address: 0x"
+        //           << std::hex << vAddr << " (memSize: " << std::dec << memSize << ")\n";
+        setMemoryViolation(vAddr);
+        return 0;
+    }
+    return memManager->readByte(processNum, vAddr);
 }
+
 
 void Process::initializePages(size_t  memPerFrame) {
-    numPages = (memSize + memPerFrame - 1) / memPerFrame; // ceil division
-    pageTable.resize(numPages, -1); // -1 means page not loaded (demand paging)
+    numPages = (memSize + memPerFrame - 1) / memPerFrame;   // ceil division
+    pageTable.resize(numPages, -1);                         // -1 means page not loaded (demand paging)
 }
 
 void Process::setPageFrame(size_t  pageIndex, int frameNo) {

@@ -8,6 +8,7 @@
 #include "FCFSScheduler.h"
 #include "RRScheduler.h"
 #include "utils.h"
+#include "MemoryManager.h"
 
 /* Libraries */
 #include <string>
@@ -59,6 +60,7 @@ std::thread batchGeneratorThread;
 std::atomic<int> batchProcessCount = 0;
 int processCounter = 1;
 
+std::shared_ptr<MemoryManager> memoryManager;
 
 int main() {
     srand(static_cast<unsigned>(time(nullptr)));
@@ -138,15 +140,35 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
 
     // MO2 NEW COMMANDS
     else if (cmd == "process-smi") {
-        cout << "Printing process-smi!\n\n";
         // TODO: Implement process-smi command
+        int busy = scheduler->getBusyCoreCount();
+        int total = scheduler->getAvailableCoreCount() + busy;
+        int cpuUtil = (static_cast<double>(busy) / total) * 100;
+
+        size_t usedMem = memoryManager->getUsedMemoryBytes();
+        double usedMiB = usedMem / (1024.0 * 1024.0);
+        double totalMiB = config.maxOverallMemory / (1024.0 * 1024.0);
+        int memUtil = static_cast<int>((static_cast<double>(usedMem) / config.maxOverallMemory) * 100);
+
+        std::cout << "\n";
+        std::cout << "+----------------------------------------------------+\n";
+        std::cout << "|      PROCESS-SMI V01.00 DRIVER VERSION: 01.00      |\n";
+        std::cout << "+----------------------------------------------------+\n";
+        std::cout << "CPU-Util      : " << cpuUtil  << "%\n";
+        std::cout << "Memory Usage  : " << usedMiB  << " MiB / " << totalMiB << " MiB\n";
+        std::cout << "Memory Util   : " << memUtil  << "%\n\n";
+
+        std::cout << "======================================================\n";
+        std::cout << "Running processes and memory usage:\n";
+        std::cout << "+----------------------------------------------------+\n";
+        consolePanel.listMemoryUsageOfRunningProcesses(scheduler->getRunningProcesses());
+        std::cout << "+----------------------------------------------------+\n\n";
     }
 
     else if (cmd == "vmstat") {
         cout << "Printing vmstat!\n\n";
         // TODO: Implement vmstat command
     }
-
     // 
     
     else if (cmd == "screen" && args.size() == 1 && args[0] == "-ls") {
@@ -181,10 +203,11 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
         unsigned long long total = config.minInstructions + rand() % (config.maxInstructions - config.minInstructions + 1);
 
         clearToProcessScreen();
-        auto newProc = make_shared<Process>(procName, total, memSize); // new
+        auto newProc = make_shared<Process>(procName, total, memSize, memoryManager); // new
         newProc->initializePages(config.memPerFrame);
+        memoryManager->allocateProcess(newProc->getProcessNo(), memSize);
 
-        auto instructions = generateRandomInstructions(total, procName);
+        auto instructions = generateRandomInstructions(total, procName, memSize, config);
         for (const auto& instr : instructions) {
             newProc->addInstruction(instr);
         }
@@ -310,7 +333,10 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
 
         // Create process
         clearToProcessScreen();
-        auto newProc = make_shared<Process>(procName, rawInstructions.size(), memSize);
+        auto newProc = make_shared<Process>(procName, rawInstructions.size(), memSize, memoryManager);
+        newProc->initializePages(config.memPerFrame);
+        memoryManager->allocateProcess(newProc->getProcessNo(), memSize);
+        // std::cout << "memSize: " << memSize << ", memPerFrame: " << config.memPerFrame << ", pages: " << (memSize + config.memPerFrame - 1) / config.memPerFrame << "\n"; // DEBUG
 
         // Parse and add fixed instructions
         auto fixedInstructions = generateFixedInstructions(rawInstructions);
@@ -515,6 +541,7 @@ void initialize() {
     if (config.schedulerType == "fcfs") {
         scheduler = std::make_unique<FCFSScheduler>(config.numCPUs, config.delaysPerExec);
         scheduler->start();
+        memoryManager = std::make_shared<MemoryManager>(config.maxOverallMemory, config.memPerFrame  );
         std::cout << ORANGE << "[FCFS Scheduler started with "
                   << config.numCPUs << " cores]" << RESET << "\n\n";
     } 
@@ -522,6 +549,7 @@ void initialize() {
     else if (config.schedulerType == "rr") {
         scheduler = std::make_unique<RRScheduler>(config.numCPUs, config.delaysPerExec, config.quantumCycles);
         scheduler->start();
+        memoryManager = std::make_shared<MemoryManager>(config.maxOverallMemory, config.memPerFrame  );
         std::cout << ORANGE << "[RR Scheduler started with "
                   << config.numCPUs << " cores]" << RESET << "\n\n";
     } 
@@ -674,14 +702,15 @@ void startBatchGeneration(std::vector<std::shared_ptr<Process>>& processList, Co
                 unsigned long long memSize = config.minMemPerProcess + rand() % (config.maxMemPerProcess - config.minMemPerProcess + 1);
 
                 // new process creation to support MO2
-                auto newProc = std::make_shared<Process>(procName, total, memSize);
+                auto newProc = std::make_shared<Process>(procName, total, memSize, memoryManager);
                 newProc->initializePages(config.memPerFrame);
+                memoryManager->allocateProcess(newProc->getProcessNo(), memSize);
                 
                 // Previous code was:
                 // auto newProc = std::make_shared<Process>(procName, total);
 
                 // Generate random instructions
-                auto instructions = generateRandomInstructions(total, procName);
+                auto instructions = generateRandomInstructions(total, procName, memSize, config);
                 for (const auto& instr : instructions)
                     newProc->addInstruction(instr);
 

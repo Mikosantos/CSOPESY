@@ -87,6 +87,8 @@ void FCFSScheduler::coreWorker(int coreId) {
         auto proc = core->assignedProcess;
         lock.unlock();
 
+        bool requeued = false;
+
         while (running && proc->getCompletedCommands() < proc->getTotalNoOfCommands()) {
             int currentTick = getCoreTick(coreId);
             
@@ -98,7 +100,17 @@ void FCFSScheduler::coreWorker(int coreId) {
             }
 
             // NOTE: passing currentTick for SLEEP and FOR instruction
-            proc->executeInstruction(coreId, currentTick);
+            bool success = proc->executeInstruction(coreId, currentTick);
+            if (!success) {
+                // Requeue process and break
+                {
+                    std::lock_guard<std::mutex> qLock(queueMutex);
+                    readyQueue.push(proc);
+                }
+
+                requeued = true;
+                break;
+            }
 
             // Simulate execution delay from delayPerExec
             if (delayPerExec > 0) {
@@ -111,7 +123,10 @@ void FCFSScheduler::coreWorker(int coreId) {
             }
         }
 
-        proc->setFinished(true);
+        // proc->setFinished(true);
+
+        // Either completed or requeued
+        proc->setFinished(!requeued); // Only mark as finished if not requeued
         lock.lock();
         core->assignedProcess = nullptr;
         core->busy = false;

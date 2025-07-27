@@ -1,6 +1,7 @@
 #pragma once 
 #include "Instruction.h"
 #include "InstructionUtils.h"
+#include "MemoryManager.h"
 
 #include <unordered_map>
 #include <string>
@@ -44,7 +45,7 @@ class Process {
 
         mutable std::mutex processMutex;
 
-        // NEW MO2 FIELDS
+        // NEW MO2 FIELDS =================================================================================
         size_t  memSize = 0;           // in bytes (this is memory required)
         size_t  numPages;              // Number of virtual pages required
 
@@ -55,8 +56,10 @@ class Process {
         std::string violationTime;
         size_t violationAddress; // The invalid memory address accessed
 
+        std::shared_ptr<MemoryManager> memManager;
+
     public:
-        Process(std::string& pName, int totalCom, int memSize);  // new signature
+        Process(std::string& pName, int totalCom, size_t memSize, std::shared_ptr<MemoryManager> memManager);  // new signature
 
         //Getters
         std::string getTime();
@@ -136,8 +139,8 @@ class Process {
             ++quantumUsed;
         }
 
-        uint16_t simulateIORead(const std::string& varName);
-        void simulateIOWrite(const std::string& varName, uint16_t value);
+        void writeToMemory(int virtualAddress, uint16_t value);
+        uint16_t readFromMemory(int virtualAddress);
 
         // NEW MO2 FUNCTIONS ======================================
         size_t  getMemSize() const { return memSize; }
@@ -167,4 +170,6 @@ class Process {
         size_t getViolationAddress() const {
             return violationAddress;
         }
+
+        size_t getMemorySize() const { return memSize; }
 };

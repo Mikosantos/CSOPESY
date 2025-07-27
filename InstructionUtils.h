@@ -1,6 +1,9 @@
 #pragma once
 
 #include "Instruction.h"
+#include "Config.h"
+#include "Utils.h" 
+
 #include <string>
 #include <vector>
 #include <cstdlib>
@@ -10,7 +13,7 @@
 #include <sstream>
 #include <iostream>
 
-inline std::vector<Instruction> generateRandomInstructions(unsigned long long targetCount, const std::string& processName);
+inline std::vector<Instruction> generateRandomInstructions(unsigned long long targetCount, const std::string& processName, size_t memSize, const Config& config);
 
 // Generate a random variable name
 inline std::string getRandomVarName() {
@@ -49,7 +52,7 @@ inline std::string generateCurrentTimestamp() {
 }
 
 // for loop instruction generator
-inline Instruction makeRandomForLoop(const std::string& processName, int depth = 0) {
+inline Instruction makeRandomForLoop(const std::string& processName, const Config& config, size_t memSize, int depth = 0) {
     Instruction instr;
     instr.type = InstructionType::FOR;
     instr.loopRepeat = 1 + rand() % 3;
@@ -57,9 +60,9 @@ inline Instruction makeRandomForLoop(const std::string& processName, int depth =
     int numInnerInstructions = 1 + rand() % 5;
     for (int i = 0; i < numInnerInstructions; ++i) {
         if (depth < 2 && rand() % 5 == 0) {
-            instr.loopInstructions.push_back(makeRandomForLoop(processName, depth + 1));
+            instr.loopInstructions.push_back(makeRandomForLoop(processName, config, memSize, depth + 1));
         } else {
-            instr.loopInstructions.push_back(generateRandomInstructions(1, processName)[0]);
+            instr.loopInstructions.push_back(generateRandomInstructions(1, processName, memSize, config)[0]);
         }
     }
 
@@ -83,14 +86,18 @@ inline unsigned long long countInstructionsInFor(const Instruction& instr) {
 }
 
 // Generate random instructions for each running process; FOR SCHEDULER-START COMMAND
-inline std::vector<Instruction> generateRandomInstructions(unsigned long long targetCount, const std::string& processName) {
+inline std::vector<Instruction> generateRandomInstructions(unsigned long long targetCount,
+                                                           const std::string& processName,
+                                                           size_t memSize,
+                                                           const Config& config) {
     std::vector<Instruction> result;
     std::vector<std::string> declaredVars;
     unsigned long long actualCount = 0;
 
     while (actualCount < targetCount) {
         Instruction instr;
-        int type = rand() % 8;
+        // int type = rand() % 8; // 0-7 for 8 types of instructions
+        int type = rand() % 6;    // 0-5 for 6 types of instructions (no READ/WRITE yet)
 
         if (declaredVars.empty()) {
             type = 1; // Force DECLARE until at least 1 variable exists
@@ -186,7 +193,7 @@ inline std::vector<Instruction> generateRandomInstructions(unsigned long long ta
             }
 
             case 5: { // FOR
-                instr = makeRandomForLoop(processName);
+                instr = makeRandomForLoop(processName, config, memSize);
 
                 // only for counting the instructions inside the FOR loop
                 int count = countInstructionsInFor(instr);
@@ -199,16 +206,16 @@ inline std::vector<Instruction> generateRandomInstructions(unsigned long long ta
                 break;
             }
 
+            // TODO: ADD CHECKER THAT ENSURES GENERATED ADDRESS ARE WITHIN MEMORY LIMITS
             case 6: { // READ
-                if (declaredVars.empty()) continue; // skip if no declared vars
+                if (declaredVars.empty()) continue;
 
                 instr.type = InstructionType::READ;
                 instr.var1 = declaredVars[rand() % declaredVars.size()];
-                
-                // Generate a valid hex memory address (within process memory range, e.g., 0x0000–0x3FFF)
-                std::stringstream ss;
-                ss << "0x" << std::hex << (rand() % 0x4000);  // adjust range as needed
-                instr.memoryAddress = ss.str();
+
+                uint32_t address = rand() % (memSize - 1); // Stay within process bounds
+                instr.memoryAddress = address;
+                instr.memoryAddressStr = "0x" + intToHex(address);
 
                 result.push_back(instr);
                 actualCount++;
@@ -216,17 +223,14 @@ inline std::vector<Instruction> generateRandomInstructions(unsigned long long ta
             }
 
             case 7: { // WRITE
-                if (declaredVars.empty()) continue; // skip if no declared vars
+                if (declaredVars.empty()) continue;
 
                 instr.type = InstructionType::WRITE;
-
-                // Generate hex memory address
-                std::stringstream ss;
-                ss << "0x" << std::hex << (rand() % 0x4000);
-                instr.memoryAddress = ss.str();
-
-                // Use existing declared variable
                 instr.var1 = declaredVars[rand() % declaredVars.size()];
+
+                uint32_t address = rand() % (memSize - 1); // Stay within process bounds
+                instr.memoryAddress = address;
+                instr.memoryAddressStr = "0x" + intToHex(address);
 
                 result.push_back(instr);
                 actualCount++;
@@ -304,14 +308,21 @@ inline std::vector<Instruction> generateFixedInstructions(const std::vector<std:
             iss >> instr.sleepTicks;
         }
 
+        // TODO: EDIT READ AND WRITE
         else if (token == "READ") {
             instr.type = InstructionType::READ;
-            iss >> instr.var1 >> instr.memoryAddress;
+            iss >> instr.var1 >> instr.memoryAddressStr;
+
+            // Convert hex string (e.g., "0x2000") to integer
+            instr.memoryAddress = std::stoul(instr.memoryAddressStr, nullptr, 16);
         }
 
         else if (token == "WRITE") {
             instr.type = InstructionType::WRITE;
-            iss >> instr.memoryAddress >> instr.var1;
+            iss >> instr.memoryAddressStr >> instr.var1;
+
+            // Convert hex string (e.g., "0x2000") to integer
+            instr.memoryAddress = std::stoul(instr.memoryAddressStr, nullptr, 16);
         }
 
         else {

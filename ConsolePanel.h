@@ -27,5 +27,5 @@ class ConsolePanel{
         static void listProcesses(const std::vector<std::shared_ptr<Process>>& allProcesses,
                                  const std::vector<std::shared_ptr<Process>>& runningProcesses);
 
-
+        void listMemoryUsageOfRunningProcesses(const std::vector<std::shared_ptr<Process>>& runningProcesses);
 };

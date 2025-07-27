@@ -46,6 +46,7 @@ struct Instruction {
 
     // NEW MO2 INSTRUCTION TYPES
     // For READ/WRITE
-    std::string memoryAddress;   // Used for READ and WRITE
+    std::string memoryAddressStr;   // Used for READ and WRITE
+    int memoryAddress = 0;
 };
 

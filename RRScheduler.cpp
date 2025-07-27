@@ -156,7 +156,20 @@ void RRScheduler::schedulerLoop() {
                                 continue;
                             }
 
-                            nextProc->executeInstruction(core, tick);
+
+                            // nextProc->executeInstruction(core, tick);
+
+                            // Check if instruction failed due to memory
+                            if (!nextProc->executeInstruction(core, tick)) {
+                                std::lock_guard<std::mutex> qLock(queueMutex);
+                                readyQueue.push(nextProc);
+
+                                std::lock_guard<std::mutex> lock(cores[core]->lock);
+                                cores[core]->busy = false;
+                                coreAssignments[core] = nullptr;
+                                return;
+                            }
+
                             nextProc->incrementQuantumUsed();
                             ++ticks;
 
