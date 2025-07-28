@@ -96,8 +96,8 @@ inline std::vector<Instruction> generateRandomInstructions(unsigned long long ta
 
     while (actualCount < targetCount) {
         Instruction instr;
-        // int type = rand() % 8; // 0-7 for 8 types of instructions
-        int type = rand() % 6;    // 0-5 for 6 types of instructions (no READ/WRITE yet)
+        int type = rand() % 8; // 0-7 for 8 types of instructions
+        // int type = rand() % 6;    // 0-5 for 6 types of instructions (no READ/WRITE yet)
 
         if (declaredVars.empty()) {
             type = 1; // Force DECLARE until at least 1 variable exists

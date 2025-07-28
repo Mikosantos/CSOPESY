@@ -43,7 +43,12 @@ void MemoryManager::allocateProcess(int pid, int memoryBytes) {
     * Returns true if the page is successfully loaded, false otherwise.
 */
 bool MemoryManager::ensurePageLoaded(int pid, int pageNo) {
-    auto& pageTable = pageTables[pid];
+    auto it = pageTables.find(pid);
+    if (it == pageTables.end()) {
+        // std::cerr << "[ERROR] ensurePageLoaded: No page table for PID " << pid << "\n";
+        return false;
+    }
+    auto& pageTable = it->second;
 
     if (pageNo >= pageTable.size()) {
         // std::cerr << "[ERROR] Invalid page number for process " << pid << "\n";
@@ -99,11 +104,13 @@ void MemoryManager::writeByte(int pid, int virtualAddress, uint16_t value) {
 
     if (!ensurePageLoaded(pid, pageNo)) return;
 
-    auto& pageTable = pageTables[pid];
-    if (pageNo >= pageTable.size()) {
-        std::cerr << "[ERROR] writeByte: Page number " << pageNo << " out of bounds for pid " << pid << "\n";
+    auto it = pageTables.find(pid);
+    if (it == pageTables.end()) {
+        std::cerr << "[ERROR] ensurePageLoaded: No page table for PID " << pid << "\n";
         return;
     }
+    auto& pageTable = it->second;
+
 
     int frameNo = pageTable[pageNo].frameNo;
 
@@ -133,7 +140,20 @@ uint16_t MemoryManager::readByte(int pid, int virtualAddress) {
 
     if (!ensurePageLoaded(pid, pageNo)) return 0;
 
-    int frameNo = pageTables[pid][pageNo].frameNo;
+    // int frameNo = pageTables[pid][pageNo].frameNo;
+    auto it = pageTables.find(pid);
+    if (it == pageTables.end()) {
+        std::cerr << "[ERROR] readByte: No page table for PID " << pid << "\n";
+        return 0;
+    }
+    auto& pageTable = it->second;
+
+    if (pageNo >= pageTable.size()) {
+        std::cerr << "[ERROR] readByte: Page number out of bounds for PID " << pid << "\n";
+        return 0;
+    }
+
+    int frameNo = pageTable[pageNo].frameNo;
 
     if (frameNo < 0 || frameNo >= physicalMemory.size()) {
         std::cerr << "[ERROR] readByte: Invalid frame number " << frameNo << " for page " << pageNo << "\n";
@@ -214,7 +234,6 @@ size_t MemoryManager::getUsedMemoryBytes() const {
     return usedFrames * pageSize;
 }
 
-// TODO: deallocateProcess
 void MemoryManager::deallocateProcess(int pid) {
     auto it = pageTables.find(pid);
     if (it == pageTables.end()) return;

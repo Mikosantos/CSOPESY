@@ -116,7 +116,7 @@ void ConsolePanel::listMemoryUsageOfRunningProcesses(const std::vector<std::shar
         double memMiB = memBytes / (1024.0 * 1024.0);
 
         std::cout << std::left << std::setw(20) << proc->getProcessName()
-                  << std::setw(15) << std::fixed << std::setprecision(2) << memMiB
+                  << std::setw(15) << std::fixed << std::setprecision(5) << memMiB
                   << "\n";
     }
 }

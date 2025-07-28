@@ -700,7 +700,17 @@ void startBatchGeneration(std::vector<std::shared_ptr<Process>>& processList, Co
                 unsigned long long total = config.minInstructions + rand() % (config.maxInstructions - config.minInstructions + 1);
 
                 // Generate random memory size M between min-mem-per-proc and max-mem-per-proc
-                unsigned long long memSize = config.minMemPerProcess + rand() % (config.maxMemPerProcess - config.minMemPerProcess + 1);
+                // unsigned long long memSize = config.minMemPerProcess + rand() % (config.maxMemPerProcess - config.minMemPerProcess + 1);
+
+                unsigned long long memSize = config.minMemPerProcess;
+                std::vector<unsigned long long> validSizes;
+                for (unsigned long long size = config.minMemPerProcess; size <= config.maxMemPerProcess; size <<= 1) {
+                    validSizes.push_back(size);
+                }
+
+                if (!validSizes.empty()) {
+                    memSize = validSizes[rand() % validSizes.size()];
+                }
 
                 // new process creation to support MO2
                 auto newProc = std::make_shared<Process>(procName, total, memSize, memoryManager);
