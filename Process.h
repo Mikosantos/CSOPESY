@@ -58,6 +58,12 @@ class Process {
 
         std::shared_ptr<MemoryManager> memManager;
 
+        bool memoryInitialized = false;
+
+        std::unordered_map<std::string, int> symbolTableOffsets;
+        const int SYMBOL_TABLE_START = 0x0000;
+        const int SYMBOL_TABLE_SIZE = 64; // bytes
+
     public:
         Process(std::string& pName, int totalCom, size_t memSize, std::shared_ptr<MemoryManager> memManager);  // new signature
 
@@ -172,4 +178,12 @@ class Process {
         }
 
         size_t getMemorySize() const { return memSize; }
+
+        bool isMemoryInitialized() const { return memoryInitialized; }
+        void markMemoryInitialized() { memoryInitialized = true; }
+
+        bool isDeclared(const std::string& name) const {
+            return symbolTableOffsets.find(name) != symbolTableOffsets.end();
+        }
+
 };

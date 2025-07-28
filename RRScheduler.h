@@ -17,8 +17,11 @@ private:
     std::vector<std::thread> coreThreads;
     std::vector<std::shared_ptr<Process>> coreAssignments;
     std::unordered_set<std::shared_ptr<Process>> assignedProcesses; // Track all assigned processes
+
+    Config config;
+    std::shared_ptr<MemoryManager> memoryManager;
 public:
-    RRScheduler(int cores, int delay, unsigned long long quantum);
+    RRScheduler(int cores, int delay, unsigned long long quantum, const Config& config, std::shared_ptr<MemoryManager> memManager);
 
     void start() override;
     void stop() override;

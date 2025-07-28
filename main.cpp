@@ -204,8 +204,8 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
 
         clearToProcessScreen();
         auto newProc = make_shared<Process>(procName, total, memSize, memoryManager); // new
-        newProc->initializePages(config.memPerFrame);
-        memoryManager->allocateProcess(newProc->getProcessNo(), memSize);
+        // newProc->initializePages(config.memPerFrame);
+        // memoryManager->allocateProcess(newProc->getProcessNo(), memSize);
 
         auto instructions = generateRandomInstructions(total, procName, memSize, config);
         for (const auto& instr : instructions) {
@@ -221,7 +221,6 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
         displayProcessScreen(newProc);
 
         scheduler->addProcess(newProc);
-
     } 
     
     else if (cmd == "screen" && args.size() >= 2 && args[0] == "-r") {
@@ -334,8 +333,8 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
         // Create process
         clearToProcessScreen();
         auto newProc = make_shared<Process>(procName, rawInstructions.size(), memSize, memoryManager);
-        newProc->initializePages(config.memPerFrame);
-        memoryManager->allocateProcess(newProc->getProcessNo(), memSize);
+        // newProc->initializePages(config.memPerFrame);
+        // memoryManager->allocateProcess(newProc->getProcessNo(), memSize);
         // std::cout << "memSize: " << memSize << ", memPerFrame: " << config.memPerFrame << ", pages: " << (memSize + config.memPerFrame - 1) / config.memPerFrame << "\n"; // DEBUG
 
         // Parse and add fixed instructions
@@ -539,17 +538,19 @@ void initialize() {
     std::cout << "\nStarting scheduler...\n";
 
     if (config.schedulerType == "fcfs") {
-        scheduler = std::make_unique<FCFSScheduler>(config.numCPUs, config.delaysPerExec);
+        memoryManager = std::make_shared<MemoryManager>(config.maxOverallMemory, config.memPerFrame);
+        scheduler = std::make_unique<FCFSScheduler>(config.numCPUs, config.delaysPerExec, config, memoryManager);
         scheduler->start();
-        memoryManager = std::make_shared<MemoryManager>(config.maxOverallMemory, config.memPerFrame  );
+        // memoryManager = std::make_shared<MemoryManager>(config.maxOverallMemory, config.memPerFrame);
         std::cout << ORANGE << "[FCFS Scheduler started with "
                   << config.numCPUs << " cores]" << RESET << "\n\n";
     } 
     
     else if (config.schedulerType == "rr") {
-        scheduler = std::make_unique<RRScheduler>(config.numCPUs, config.delaysPerExec, config.quantumCycles);
+        memoryManager = std::make_shared<MemoryManager>(config.maxOverallMemory, config.memPerFrame);
+        scheduler = std::make_unique<RRScheduler>(config.numCPUs, config.delaysPerExec, config.quantumCycles, config, memoryManager);
         scheduler->start();
-        memoryManager = std::make_shared<MemoryManager>(config.maxOverallMemory, config.memPerFrame  );
+        // memoryManager = std::make_shared<MemoryManager>(config.maxOverallMemory, config.memPerFrame);
         std::cout << ORANGE << "[RR Scheduler started with "
                   << config.numCPUs << " cores]" << RESET << "\n\n";
     } 
@@ -703,8 +704,8 @@ void startBatchGeneration(std::vector<std::shared_ptr<Process>>& processList, Co
 
                 // new process creation to support MO2
                 auto newProc = std::make_shared<Process>(procName, total, memSize, memoryManager);
-                newProc->initializePages(config.memPerFrame);
-                memoryManager->allocateProcess(newProc->getProcessNo(), memSize);
+                // newProc->initializePages(config.memPerFrame);
+                // memoryManager->allocateProcess(newProc->getProcessNo(), memSize);
                 
                 // Previous code was:
                 // auto newProc = std::make_shared<Process>(procName, total);

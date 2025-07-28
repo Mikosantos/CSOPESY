@@ -5,8 +5,8 @@
 #include <unordered_set>
 
 // Constructor
-RRScheduler::RRScheduler(int cores, int delay, unsigned long long quantum)
-    : Scheduler(cores, delay), quantumCycles(quantum) {}
+RRScheduler::RRScheduler(int cores, int delay, unsigned long long quantum, const Config& config, std::shared_ptr<MemoryManager> memManager)
+    : Scheduler(cores, delay), quantumCycles(quantum), config(config), memoryManager(memManager) {}
 
 // Start the Round Robin scheduler
 void RRScheduler::start() {
@@ -99,6 +99,10 @@ void RRScheduler::schedulerLoop() {
                     cores[core]->busy = false;
                     coreAssignments[core]->setCoreNum(-1);
                     coreThreads[core] = std::thread(); // Reset
+
+                    // deallocate memory for finished process
+                    memoryManager->deallocateProcess(coreAssignments[core]->getProcessNo());
+
                     coreAssignments[core] = nullptr;
                 }
                 continue;
@@ -146,6 +150,16 @@ void RRScheduler::schedulerLoop() {
                     }
 
                     nextProc->resetQuantumUsed();
+
+                    /*
+                        This is the first time we are initializing the process's memory.
+                    */
+                    if (!nextProc->isMemoryInitialized()) {
+                        nextProc->initializePages(config.memPerFrame);
+                        memoryManager->allocateProcess(nextProc->getProcessNo(), nextProc->getMemSize());
+                        nextProc->markMemoryInitialized(); 
+                    }
+
                     coreThreads[core] = std::thread([this, nextProc, core]() {
                         unsigned long long ticks = 0;
                         while (running && !nextProc->isFinished() && ticks < quantumCycles) {
@@ -161,8 +175,15 @@ void RRScheduler::schedulerLoop() {
 
                             // Check if instruction failed due to memory
                             if (!nextProc->executeInstruction(core, tick)) {
-                                std::lock_guard<std::mutex> qLock(queueMutex);
-                                readyQueue.push(nextProc);
+                                if (nextProc->hasMemoryViolation()) {
+                                    // debugging
+                                    // std::cerr << "[RR] Memory violation in " << nextProc->getProcessName()
+                                    //         << " at 0x" << std::hex << nextProc->getViolationAddress() << "\n";
+                                    nextProc->setFinished(true);
+                                } else {
+                                    std::lock_guard<std::mutex> qLock(queueMutex);
+                                    readyQueue.push(nextProc);
+                                }
 
                                 std::lock_guard<std::mutex> lock(cores[core]->lock);
                                 cores[core]->busy = false;

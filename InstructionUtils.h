@@ -213,7 +213,7 @@ inline std::vector<Instruction> generateRandomInstructions(unsigned long long ta
                 instr.type = InstructionType::READ;
                 instr.var1 = declaredVars[rand() % declaredVars.size()];
 
-                uint32_t address = rand() % (memSize - 1); // Stay within process bounds
+                uint32_t address = (rand() % (memSize / 2)) * 2; // Stay within process bounds
                 instr.memoryAddress = address;
                 instr.memoryAddressStr = "0x" + intToHex(address);
 
@@ -228,7 +228,7 @@ inline std::vector<Instruction> generateRandomInstructions(unsigned long long ta
                 instr.type = InstructionType::WRITE;
                 instr.var1 = declaredVars[rand() % declaredVars.size()];
 
-                uint32_t address = rand() % (memSize - 1); // Stay within process bounds
+                uint32_t address = (rand() % (memSize / 2)) * 2; // Stay within process bounds
                 instr.memoryAddress = address;
                 instr.memoryAddressStr = "0x" + intToHex(address);
 

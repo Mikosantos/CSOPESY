@@ -2,7 +2,9 @@
 #include <chrono>
 #include <thread>
 
-FCFSScheduler::FCFSScheduler(int cores, unsigned long long delay) : Scheduler(cores, delay) {}
+FCFSScheduler::FCFSScheduler(int cores, unsigned long long delay, const Config& config, std::shared_ptr<MemoryManager> memManager)
+    : Scheduler(cores, delay), config(config), memoryManager(memManager) {}
+
 
 FCFSScheduler::~FCFSScheduler() {
     stop();
@@ -12,11 +14,13 @@ FCFSScheduler::~FCFSScheduler() {
 void FCFSScheduler::start() {
     running = true;
 
+    // cores.resize(coreCount);
     cores.reserve(coreCount);
     for (int i = 0; i < coreCount; ++i) {
         auto core = std::make_unique<CPUCore>();
         core->thread = std::thread(&FCFSScheduler::coreWorker, this, i);
         cores.push_back(std::move(core));
+        // cores[i] = std::move(core);
     }
 
     schedulerThread = std::thread(&FCFSScheduler::schedulerLoop, this);
@@ -61,6 +65,12 @@ void FCFSScheduler::schedulerLoop() {
                 }
 
                 if (nextProc) {
+                    if (!nextProc->isMemoryInitialized()) {
+                        nextProc->initializePages(config.memPerFrame);
+                        memoryManager->allocateProcess(nextProc->getProcessNo(), nextProc->getMemSize());
+                        nextProc->markMemoryInitialized(); 
+                    }
+
                     core->assignedProcess = nextProc;
                     core->busy = true;
                     nextProc->setCoreNum(i);
@@ -102,10 +112,15 @@ void FCFSScheduler::coreWorker(int coreId) {
             // NOTE: passing currentTick for SLEEP and FOR instruction
             bool success = proc->executeInstruction(coreId, currentTick);
             if (!success) {
-                // Requeue process and break
-                {
-                    std::lock_guard<std::mutex> qLock(queueMutex);
-                    readyQueue.push(proc);
+                if (proc->hasMemoryViolation()) {
+                    proc->setFinished(true);
+                    break;
+                } else {
+                    // Requeue
+                    {
+                        std::lock_guard<std::mutex> qLock(queueMutex);
+                        readyQueue.push(proc);
+                    }
                 }
 
                 requeued = true;
@@ -124,9 +139,17 @@ void FCFSScheduler::coreWorker(int coreId) {
         }
 
         // proc->setFinished(true);
+        
+        // Only mark and clean up if not requeued
+        if (!requeued) {
+            proc->setFinished(true);
 
-        // Either completed or requeued
-        proc->setFinished(!requeued); // Only mark as finished if not requeued
+            // EALLOCATE MEMORY
+            if (memoryManager) {
+                memoryManager->deallocateProcess(proc->getProcessNo());
+            }
+        }
+
         lock.lock();
         core->assignedProcess = nullptr;
         core->busy = false;

@@ -60,4 +60,6 @@ public:
     size_t getUsedMemoryBytes() const;
 
     const std::vector<Frame>& getFrames() const { return physicalMemory; }
+
+    void deallocateProcess(int pid);
 };

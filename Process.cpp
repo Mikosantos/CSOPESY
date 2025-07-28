@@ -224,16 +224,19 @@ bool Process::executeInstruction(int coreId, int currentTick) {
         instr = instructions[instructionPointer++];
     }
 
-    //handle MEMORY ACCESS instruction
-    if (instr.type == InstructionType::READ || instr.type == InstructionType::WRITE) {
-        int virtualAddr = instr.memoryAddress;
-        int pageNo = virtualAddr / memManager->getPageSize();
+    //handle MEMORY ACCESS instruction : NOT NEEDED 
+    // if (instr.type == InstructionType::READ || instr.type == InstructionType::WRITE) {
+    //     int virtualAddr = instr.memoryAddress;
+    //     if (virtualAddr < 0 || virtualAddr + 1 >= static_cast<int>(memSize)) {
+    //         setMemoryViolation(virtualAddr);
+    //         return false;  // prevent page load
+    //     }
 
-        if (!memManager->ensurePageLoaded(processNum, pageNo)) {
-            // Page not loaded and no replacement possible — skip this turn
-            return false;
-        }
-    }
+    //     int pageNo = virtualAddr / memManager->getPageSize();
+    //     if (!memManager->ensurePageLoaded(processNum, pageNo)) {
+    //         return false;
+    //     }
+    // }
 
     instr.executedTimestamp = generateCurrentTimestamp();
     instr.executedCore = coreId;
@@ -317,9 +320,18 @@ bool Process::executeInstruction(int coreId, int currentTick) {
 
         case InstructionType::READ: {
             try {
-                uint16_t value = readFromMemory(instr.memoryAddress);  // already an int!
+                uint16_t value = readFromMemory(instr.memoryAddress); 
+                if (hasMemoryViolation()) return false;
+
+                // Declare variable if not already declared; not sure if this is needed
+                if(!isDeclared(instr.var1)) {
+                    declareVariable(instr.var1, value);
+                }
+
                 setVariable(instr.var1, value);
-                log << "READ " << instr.var1 << " <- [0x" << std::hex << instr.memoryAddress << "] = " << std::dec << value << "\n";
+
+                // debugging
+                // log << "READ " << instr.var1 << " <- [0x" << std::hex << instr.memoryAddress << "] = " << std::dec << value << "\n";
             } catch (const std::exception& e) {
                 log << "Memory READ failed at address: 0x" << std::hex << instr.memoryAddress << " (" << e.what() << ")\n";
                 setFinished(true);  // simulate process kill
@@ -334,7 +346,10 @@ bool Process::executeInstruction(int coreId, int currentTick) {
             try {
                 uint16_t value = getVariable(instr.var1);
                 writeToMemory(instr.memoryAddress, value);
-                log << "WRITE [0x" << std::hex << instr.memoryAddress << "] <- " << std::dec << value << "\n";
+                if (hasMemoryViolation()) return false;
+
+                // debugging
+                // log << "WRITE [0x" << std::hex << instr.memoryAddress << "] <- " << std::dec << value << "\n";
             } catch (const std::exception& e) {
                 log << "Memory WRITE failed at address: 0x" << std::hex << instr.memoryAddress << " (" << e.what() << ")\n";
                 setFinished(true);  // simulate process kill
@@ -358,15 +373,74 @@ bool Process::executeInstruction(int coreId, int currentTick) {
 // Declare a variable with an optional initial value
 void Process::declareVariable(const std::string& name, uint16_t value) {
     variables[name] = value;
+
+    if (symbolTableOffsets.size() >= 32) return; // Full
+    if (symbolTableOffsets.count(name)) return;  // Already declared
+
+    int offset = symbolTableOffsets.size() * 2;
+    int vAddr = SYMBOL_TABLE_START + offset;
+
+    // test
+    if (vAddr < 0 || vAddr + 1 >= static_cast<int>(memSize)) {
+        setMemoryViolation(vAddr);
+        return;
+    }
+
+    int pageNo = vAddr / memManager->getPageSize();
+    if (!memManager->ensurePageLoaded(processNum, pageNo)) {
+        setMemoryViolation(vAddr);
+        return;
+    }
+
+    symbolTableOffsets[name] = offset;
+    writeToMemory(vAddr, value);
 }
 
 uint16_t Process::getVariable(const std::string& name) const {
-    auto it = variables.find(name);
-    return (it != variables.end()) ? it->second : 0;
+    // auto it = variables.find(name);
+    // return (it != variables.end()) ? it->second : 0;
+
+    auto it = symbolTableOffsets.find(name);
+    if (it == symbolTableOffsets.end()) return 0;
+
+    int vAddr = SYMBOL_TABLE_START + it->second;
+
+    // test
+    if (vAddr < 0 || vAddr + 1 >= static_cast<int>(memSize)) {
+        const_cast<Process*>(this)->setMemoryViolation(vAddr);
+        return 0;
+    }
+
+    int pageNo = vAddr / memManager->getPageSize();
+    if (!memManager->ensurePageLoaded(processNum, pageNo)) {
+        const_cast<Process*>(this)->setMemoryViolation(vAddr);
+        return 0;
+    }
+
+    return memManager->readByte(processNum, vAddr);
 }
 
 void Process::setVariable(const std::string& name, uint16_t value) {
-    variables[name] = value;
+    variables[name] = value; // prev implementation
+
+    auto it = symbolTableOffsets.find(name);
+    if (it == symbolTableOffsets.end()) return;
+
+    int vAddr = SYMBOL_TABLE_START + it->second;
+
+    // test
+    if (vAddr < 0 || vAddr + 1 >= static_cast<int>(memSize)) {
+        const_cast<Process*>(this)->setMemoryViolation(vAddr);
+        return;
+    }
+
+    int pageNo = vAddr / memManager->getPageSize();
+    if (!memManager->ensurePageLoaded(processNum, pageNo)) {
+        setMemoryViolation(vAddr);
+        return;
+    }
+
+    memManager->writeByte(processNum, vAddr, value);
 }
 
 // Get the current instruction based on the instruction pointer.
@@ -417,9 +491,11 @@ bool Process::isRunning() const {
 // NEW MO2 INSTRUCTION SIMULATION FUNCTIONS ==================================================
 void Process::writeToMemory(int vAddr, uint16_t value) {
     if (vAddr < 0 || vAddr + 1 >= static_cast<int>(memSize)) {
+        // debugging
         // std::cerr << "[ERROR] Process " << processName
         //           << " tried to WRITE to invalid address: 0x"
         //           << std::hex << vAddr << " (memSize: " << std::dec << memSize << ")\n";
+        // std::cout << "❗Memory violation triggered at 0x" << std::hex << vAddr << std::dec << "\n";
         setMemoryViolation(vAddr);
         return;
     }

@@ -6,6 +6,11 @@
 
 // TODO: CHECK IMPLEMENTATION OF MEMORY MANAGER (DEMAND PAGING, PAGE REPLACEMENT, ETC.)
 
+/*
+    * MemoryManager constructor initializes the memory manager with the total memory size and page size.
+    * It calculates the number of frames and initializes the physical memory and free frames.
+    * It also initializes the backing store file.
+*/
 MemoryManager::MemoryManager(size_t totalMemory, size_t pageSize)
     : totalMemory(totalMemory), pageSize(pageSize), pagesPagedIn(0), pagesPagedOut(0) {
 
@@ -23,11 +28,20 @@ MemoryManager::MemoryManager(size_t totalMemory, size_t pageSize)
     }
 }
 
+/*
+    * allocateProcess allocates memory for a process by creating a page table for the given process ID.
+    * It calculates the number of pages needed based on the memory size and page size.
+*/
 void MemoryManager::allocateProcess(int pid, int memoryBytes) {
     int numPages = (memoryBytes + pageSize - 1) / pageSize;
     pageTables[pid] = std::vector<PageTableEntry>(numPages);
 }
 
+/*
+    * ensurePageLoaded checks if a page is loaded in memory for the given process ID and virtual page number.
+    * If the page is not loaded, it attempts to load it from the backing store or evicts a page if necessary.
+    * Returns true if the page is successfully loaded, false otherwise.
+*/
 bool MemoryManager::ensurePageLoaded(int pid, int pageNo) {
     auto& pageTable = pageTables[pid];
 
@@ -74,6 +88,11 @@ bool MemoryManager::ensurePageLoaded(int pid, int pageNo) {
     return true;
 }
 
+/*
+    this function writes a byte value to the specified virtual address of the process.
+    It first checks if the page is loaded, and if not, it loads the page.
+    Then it writes the value to the specified offset in the frame corresponding to the page.
+*/
 void MemoryManager::writeByte(int pid, int virtualAddress, uint16_t value) {
     int pageNo = virtualAddress / pageSize;
     int offset = virtualAddress % pageSize;
@@ -103,6 +122,11 @@ void MemoryManager::writeByte(int pid, int virtualAddress, uint16_t value) {
     pageTable[pageNo].dirty = true;
 }
 
+/*
+    this function reads a 2-byte value from the specified virtual address of the process.
+    It first checks if the page is loaded, and if not, it loads the page.
+    Then it reads the value from the specified offset in the frame corresponding to the page.
+*/
 uint16_t MemoryManager::readByte(int pid, int virtualAddress) {
     int pageNo = virtualAddress / pageSize;
     int offset = virtualAddress % pageSize;
@@ -126,9 +150,19 @@ uint16_t MemoryManager::readByte(int pid, int virtualAddress) {
     return static_cast<uint16_t>(low | (high << 8));
 }
 
+/*
+    this function saves a page to the backing store file.
+    It writes the process ID, virtual page number, and the data of the page to the file.
+    If the file cannot be opened, it prints an error message.
+
+    kind of weird because the content is like this:
+    process_id:virtual_page_no:byte1 byte2 byte3 ...
+    where each byte is an integer value (0-255) representing the byte data of the page. and its too loong ??
+
+    idk if its required to save the whole page data like this, but this is how it was implemented in the original code.
+*/
 void MemoryManager::savePageToBackingStore(int pid, int pageNo, int frameNo) {
     // TODO: FIX THIS
-    // FORMAT SHOULD BE PROCESS_NAME IDK WHAT ELSE
     std::ofstream ofs("csopesy-backing-store.txt", std::ios::app);
     if (!ofs.is_open()) return;
 
@@ -139,6 +173,12 @@ void MemoryManager::savePageToBackingStore(int pid, int pageNo, int frameNo) {
     ofs << "\n";
 }
 
+/*
+    this function loads a page from the backing store file.
+    It reads the process ID, virtual page number, and the data of the page from the file.
+    If the page is found, it loads the data into the specified frame in physical memory.
+    If not found, it zeroes out the frame.
+*/
 void MemoryManager::loadPageFromBackingStore(int pid, int pageNo, int frameNo) {
     std::ifstream ifs("csopesy-backing-store.txt");
     std::string line;
@@ -165,7 +205,38 @@ void MemoryManager::loadPageFromBackingStore(int pid, int pageNo, int frameNo) {
     std::fill(physicalMemory[frameNo].data.begin(), physicalMemory[frameNo].data.end(), 0);
 }
 
+/*
+    * getUsedMemoryBytes returns the total number of bytes used in memory.
+    * It calculates the used memory by multiplying the number of used frames by the page size.
+*/
 size_t MemoryManager::getUsedMemoryBytes() const {
     size_t usedFrames = numFrames - freeFrames.size();
     return usedFrames * pageSize;
+}
+
+// TODO: deallocateProcess
+void MemoryManager::deallocateProcess(int pid) {
+    auto it = pageTables.find(pid);
+    if (it == pageTables.end()) return;
+
+    // Return used frames to free pool
+    for (auto& entry : it->second) {
+        if (entry.valid && entry.frameNo >= 0) {
+            freeFrames.push(entry.frameNo);
+        }
+    }
+
+    // Remove from FIFO queue
+    std::queue<std::pair<int, int>> newQueue;
+    while (!fifoQueue.empty()) {
+        auto front = fifoQueue.front();
+        fifoQueue.pop();
+        if (front.first != pid) {
+            newQueue.push(front);
+        }
+    }
+    fifoQueue = std::move(newQueue);
+
+    // Remove page table
+    pageTables.erase(it);
 }
