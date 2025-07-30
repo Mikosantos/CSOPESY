@@ -7,6 +7,7 @@
 #include <string>
 #include <fstream>
 #include <cstdint>
+#include <mutex>
 
 struct Frame {
     int processId = -1;
@@ -36,6 +37,8 @@ private:
 
     int pagesPagedIn = 0;
     int pagesPagedOut = 0;
+
+    std::mutex memoryMutex;
 
 public:
     MemoryManager(size_t totalMemoryBytes, size_t memoryPerFrame);

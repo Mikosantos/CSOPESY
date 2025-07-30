@@ -43,6 +43,8 @@ void MemoryManager::allocateProcess(int pid, int memoryBytes) {
     * Returns true if the page is successfully loaded, false otherwise.
 */
 bool MemoryManager::ensurePageLoaded(int pid, int pageNo) {
+    std::lock_guard<std::mutex> lock(memoryMutex);
+    
     auto it = pageTables.find(pid);
     if (it == pageTables.end()) {
         // std::cerr << "[ERROR] ensurePageLoaded: No page table for PID " << pid << "\n";
