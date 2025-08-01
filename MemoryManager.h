@@ -43,7 +43,7 @@ private:
 public:
     MemoryManager(size_t totalMemoryBytes, size_t memoryPerFrame);
 
-    void allocateProcess(int pid, int memoryBytes);
+    bool allocateProcess(int pid, int memoryBytes);
     uint16_t readByte(int pid, int virtualAddress);
     void writeByte(int pid, int virtualAddress, uint16_t value);
 
@@ -64,5 +64,6 @@ public:
 
     const std::vector<Frame>& getFrames() const { return physicalMemory; }
 
+    void cleanBackingStore(int pid);
     void deallocateProcess(int pid);
 };

@@ -66,8 +66,15 @@ void FCFSScheduler::schedulerLoop() {
 
                 if (nextProc) {
                     if (!nextProc->isMemoryInitialized()) {
+
+                        // Try to allocate memory; if not enough, requeue and skip this core cycle
+                        if (!memoryManager->allocateProcess(nextProc->getProcessNo(), nextProc->getMemSize())) {
+                            std::lock_guard<std::mutex> qLock(queueMutex);
+                            readyQueue.push(nextProc);
+                            continue;
+                        }
+
                         nextProc->initializePages(config.memPerFrame);
-                        memoryManager->allocateProcess(nextProc->getProcessNo(), nextProc->getMemSize());
                         nextProc->markMemoryInitialized(); 
                     }
 
@@ -144,7 +151,7 @@ void FCFSScheduler::coreWorker(int coreId) {
         if (!requeued) {
             proc->setFinished(true);
 
-            // EALLOCATE MEMORY
+            // DEALLOCATE MEMORY
             if (memoryManager) {
                 memoryManager->deallocateProcess(proc->getProcessNo());
             }

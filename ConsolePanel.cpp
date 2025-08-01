@@ -109,11 +109,14 @@ void ConsolePanel::addConsolePanel(std::shared_ptr<Console> screenPanel){
 }
 
 void ConsolePanel::listMemoryUsageOfRunningProcesses(const std::vector<std::shared_ptr<Process>>& runningProcesses) {
+    constexpr size_t KIB = 1024;
+    
     for (const auto& proc : runningProcesses) {
         if (proc->getProcessName() == "MAIN_SCREEN") continue;
 
         size_t memBytes = proc->getMemorySize();
-        double memMiB = memBytes / (1024.0 * 1024.0);
+        // double memMiB = memBytes / (1024.0 * 1024.0);
+        double memMiB = memBytes / static_cast<double>(KIB);
 
         std::cout << std::left << std::setw(20) << proc->getProcessName()
                   << std::setw(15) << std::fixed << std::setprecision(5) << memMiB

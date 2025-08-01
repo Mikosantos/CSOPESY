@@ -140,14 +140,20 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
 
     // MO2 NEW COMMANDS
     else if (cmd == "process-smi") {
-        // TODO: Implement process-smi command
+        constexpr size_t KIB = 1024;
+        constexpr size_t MIB = KIB * 1024;
+
         int busy = scheduler->getBusyCoreCount();
         int total = scheduler->getAvailableCoreCount() + busy;
         int cpuUtil = (static_cast<double>(busy) / total) * 100;
 
         size_t usedMem = memoryManager->getUsedMemoryBytes();
-        double usedMiB = usedMem / (1024.0 * 1024.0);
-        double totalMiB = config.maxOverallMemory / (1024.0 * 1024.0);
+        // double usedMiB = usedMem / (1024.0 * 1024.0);
+        // double totalMiB = config.maxOverallMemory / (1024.0 * 1024.0);
+
+        double usedKiB = usedMem / static_cast<double>(KIB);
+        double totalKiB = config.maxOverallMemory / static_cast<double>(KIB);
+        
         int memUtil = static_cast<int>((static_cast<double>(usedMem) / config.maxOverallMemory) * 100);
 
         std::cout << "\n";
@@ -155,7 +161,7 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
         std::cout << "|      PROCESS-SMI V01.00 DRIVER VERSION: 01.00      |\n";
         std::cout << "+----------------------------------------------------+\n";
         std::cout << "CPU-Util      : " << cpuUtil  << "%\n";
-        std::cout << "Memory Usage  : " << usedMiB  << " MiB / " << totalMiB << " MiB\n";
+        std::cout << "Memory Usage  : " << usedKiB  << " MiB / " << totalKiB << " MiB\n";
         std::cout << "Memory Util   : " << memUtil  << "%\n\n";
 
         std::cout << "======================================================\n";
@@ -165,9 +171,10 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
         std::cout << "+----------------------------------------------------+\n\n";
     }
 
+     // TODO: Implement vmstat command
     else if (cmd == "vmstat") {
         cout << "Printing vmstat!\n\n";
-        // TODO: Implement vmstat command
+
     }
     // 
     

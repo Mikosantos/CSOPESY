@@ -32,9 +32,17 @@ MemoryManager::MemoryManager(size_t totalMemory, size_t pageSize)
     * allocateProcess allocates memory for a process by creating a page table for the given process ID.
     * It calculates the number of pages needed based on the memory size and page size.
 */
-void MemoryManager::allocateProcess(int pid, int memoryBytes) {
+bool MemoryManager::allocateProcess(int pid, int memoryBytes) {
+    std::lock_guard<std::mutex> lock(memoryMutex);
+
     int numPages = (memoryBytes + pageSize - 1) / pageSize;
+
+    if (numPages > freeFrames.size()) {
+        return false; // not enough memory
+    }
+
     pageTables[pid] = std::vector<PageTableEntry>(numPages);
+    return true;
 }
 
 /*
@@ -236,13 +244,86 @@ size_t MemoryManager::getUsedMemoryBytes() const {
     return usedFrames * pageSize;
 }
 
+/*
+    previous version of deallocateProcess
+*/
+
+// void MemoryManager::deallocateProcess(int pid) {
+//     auto it = pageTables.find(pid);
+//     if (it == pageTables.end()) return;
+
+//     // Return used frames to free pool
+//     for (auto& entry : it->second) {
+//         if (entry.valid && entry.frameNo >= 0) {
+//             freeFrames.push(entry.frameNo);
+//         }
+//     }
+
+//     // Remove from FIFO queue
+//     std::queue<std::pair<int, int>> newQueue;
+//     while (!fifoQueue.empty()) {
+//         auto front = fifoQueue.front();
+//         fifoQueue.pop();
+//         if (front.first != pid) {
+//             newQueue.push(front);
+//         }
+//     }
+//     fifoQueue = std::move(newQueue);
+
+//     // Remove page table
+//     pageTables.erase(it);
+// }
+
+/*
+    * cleanBackingStore removes all entries for the given process ID from the backing store file.
+    * It reads the file, filters out the entries for the specified PID, and writes the remaining entries back to the file.
+*/
+void MemoryManager::cleanBackingStore(int pid) {
+    std::ifstream in("csopesy-backing-store.txt");
+    if (!in.is_open()) return;
+
+    std::ostringstream temp;
+    std::string line;
+
+    // Keep lines that are NOT for the given pid
+    while (std::getline(in, line)) {
+        std::istringstream iss(line);
+        std::string pidStr;
+        if (std::getline(iss, pidStr, ':')) {
+            try {
+                int storedPid = std::stoi(pidStr);
+                if (storedPid != pid) {
+                    temp << line << "\n";
+                }
+            } catch (...) {
+                // If malformed line, keep it to avoid accidental data loss
+                temp << line << "\n";
+            }
+        }
+    }
+    in.close();
+
+    // Overwrite file with filtered content
+    std::ofstream out("csopesy-backing-store.txt", std::ios::trunc);
+    if (!out.is_open()) return;
+
+    out << temp.str();
+    out.close();
+}
+
+/*
+    * deallocateProcess deallocates the memory for a process by removing its page table and freeing its frames.
+    * It also cleans up the backing store entries for the process.
+*/
 void MemoryManager::deallocateProcess(int pid) {
     auto it = pageTables.find(pid);
     if (it == pageTables.end()) return;
 
-    // Return used frames to free pool
+    // Return used frames to free pool and clear memory
     for (auto& entry : it->second) {
-        if (entry.valid && entry.frameNo >= 0) {
+        if (entry.valid && entry.frameNo >= 0 && entry.frameNo < physicalMemory.size()) {
+            std::fill(physicalMemory[entry.frameNo].data.begin(),
+                      physicalMemory[entry.frameNo].data.end(), 0);
             freeFrames.push(entry.frameNo);
         }
     }
@@ -260,4 +341,7 @@ void MemoryManager::deallocateProcess(int pid) {
 
     // Remove page table
     pageTables.erase(it);
+
+    // Clean up backing store entries for this process
+    cleanBackingStore(pid);
 }

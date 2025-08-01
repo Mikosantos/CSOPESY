@@ -89,23 +89,22 @@ void RRScheduler::schedulerLoop() {
 
         for (int core = 0; core < coreCount; ++core) {
             // Join finished thread if process is finished
-            if (coreAssignments[core] && coreAssignments[core]->isFinished()) {
-                if (coreThreads[core].joinable()) {
-                    coreThreads[core].join();
-                }
+            {
+                std::lock_guard<std::mutex> lock(cores[core]->lock);
+                if (coreAssignments[core] && coreAssignments[core]->isFinished()) {
+                    if (coreThreads[core].joinable()) {
+                        coreThreads[core].join();
+                    }
 
-                {
-                    std::lock_guard<std::mutex> lock(cores[core]->lock);
-                    cores[core]->busy = false;
                     coreAssignments[core]->setCoreNum(-1);
-                    coreThreads[core] = std::thread(); // Reset
-
-                    // deallocate memory for finished process
                     memoryManager->deallocateProcess(coreAssignments[core]->getProcessNo());
 
+                    coreThreads[core] = std::thread(); // Reset
                     coreAssignments[core] = nullptr;
+                    cores[core]->busy = false;
+
+                    continue;
                 }
-                continue;
             }
 
             // Join thread if quantum exceeded but not finished
@@ -155,8 +154,24 @@ void RRScheduler::schedulerLoop() {
                         This is the first time we are initializing the process's memory.
                     */
                     if (!nextProc->isMemoryInitialized()) {
+
+                        // Try to allocate memory; if not enough, requeue and skip this core cycle
+                        if (!memoryManager->allocateProcess(nextProc->getProcessNo(), nextProc->getMemSize())) {
+                            {
+                                std::lock_guard<std::mutex> qLock(queueMutex);
+                                readyQueue.push(nextProc);
+                            }
+
+                            {
+                                std::lock_guard<std::mutex> lock(cores[core]->lock);
+                                cores[core]->busy = false;
+                            }
+
+                            coreAssignments[core] = nullptr;
+                            continue;
+                        }
+
                         nextProc->initializePages(config.memPerFrame);
-                        memoryManager->allocateProcess(nextProc->getProcessNo(), nextProc->getMemSize());
                         nextProc->markMemoryInitialized(); 
                     }
 
@@ -221,7 +236,9 @@ void RRScheduler::coreWorker(int coreId) {
 int RRScheduler::getBusyCoreCount() const {
     int count = 0;
     for (int i = 0; i < coreCount; ++i) {
-        if (coreAssignments[i] != nullptr && !coreAssignments[i]->isFinished()) {
+        if (coreAssignments[i] != nullptr && 
+            coreAssignments[i]->isMemoryInitialized() &&
+            !coreAssignments[i]->isFinished()) {
             count++;
         }
     }
@@ -233,6 +250,7 @@ std::vector<std::shared_ptr<Process>> RRScheduler::getRunningProcesses() const {
     
     for (int i = 0; i < coreCount; ++i) {
         if (coreAssignments[i] && 
+            coreAssignments[i]->isMemoryInitialized() && // new
             coreAssignments[i]->getCompletedCommands() < coreAssignments[i]->getTotalNoOfCommands()) {
             result.push_back(coreAssignments[i]);
         }
