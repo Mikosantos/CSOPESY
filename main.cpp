@@ -173,7 +173,33 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
 
      // TODO: Implement vmstat command
     else if (cmd == "vmstat") {
-        cout << "Printing vmstat!\n\n";
+        std::cout << "+----------------------------------------------------+\n";
+        std::cout << "|                       VMSTAT                       |\n";
+        std::cout << "+----------------------------------------------------+\n";
+
+        size_t totalMemory = memoryManager->getTotalMemory();          // in bytes
+        size_t usedMemory  = memoryManager->getUsedMemoryBytes();      // in bytes
+        size_t freeMemory  = totalMemory - usedMemory;
+
+        int pagedIn  = memoryManager->getPagesPagedIn();
+        int pagedOut = memoryManager->getPagesPagedOut();              // pages
+
+        uint64_t totalCpuTicks = scheduler->getTotalCpuTicks();        // total across all cores
+        uint64_t idleCpuTicks  = scheduler->getIdleCpuTicks();
+        uint64_t activeCpuTicks = totalCpuTicks - idleCpuTicks;
+
+        std::cout << std::fixed << std::setprecision(2);
+        std::cout << (totalMemory / 1024.0) << " K Total Memory\n";
+        std::cout << (usedMemory  / 1024.0) << " K Used Memory\n";
+        std::cout << (freeMemory  / 1024.0) << " K Free Memory\n\n";
+
+        std::cout << idleCpuTicks   << " Idle CPU Ticks\n";
+        std::cout << activeCpuTicks << " Active CPU Ticks\n";
+        std::cout << totalCpuTicks  << " Total CPU Ticks\n\n";
+
+        std::cout << pagedIn  << " Num Paged In\n";
+        std::cout << pagedOut << " Num Paged Out\n";
+        std::cout << "+----------------------------------------------------+\n\n";
 
     }
     // 

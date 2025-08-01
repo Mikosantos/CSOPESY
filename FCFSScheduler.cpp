@@ -16,6 +16,10 @@ void FCFSScheduler::start() {
 
     // cores.resize(coreCount);
     cores.reserve(coreCount);
+
+    totalTicksPerCore.resize(coreCount, 0);
+    activeTicksPerCore.resize(coreCount, 0);
+
     for (int i = 0; i < coreCount; ++i) {
         auto core = std::make_unique<CPUCore>();
         core->thread = std::thread(&FCFSScheduler::coreWorker, this, i);
@@ -101,6 +105,12 @@ void FCFSScheduler::coreWorker(int coreId) {
 
         if (!running) break;
 
+        // If still no assigned process after waiting, count idle tick
+        if (!core->assignedProcess) {
+            totalTicksPerCore[coreId]++;
+            continue; // go back to waiting
+        }
+
         auto proc = core->assignedProcess;
         lock.unlock();
 
@@ -113,6 +123,8 @@ void FCFSScheduler::coreWorker(int coreId) {
             if (proc->isSleeping(currentTick)) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(50));
                 incrementCoreTick(coreId);
+                totalTicksPerCore[coreId]++;
+                activeTicksPerCore[coreId]++;
                 continue;
             }
 
@@ -139,9 +151,13 @@ void FCFSScheduler::coreWorker(int coreId) {
                 for (int i = 0; i < delayPerExec; ++i) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(1));
                     incrementCoreTick(coreId);
+                    totalTicksPerCore[coreId]++;
+                    activeTicksPerCore[coreId]++;
                 }
             } else {
                 incrementCoreTick(coreId);  // Only add 1 tick if no delay is set
+                totalTicksPerCore[coreId]++;
+                activeTicksPerCore[coreId]++;
             }
         }
 

@@ -16,6 +16,9 @@ void RRScheduler::start() {
     cores.resize(coreCount);
     tickThreads.resize(coreCount);
 
+    totalTicksPerCore.resize(coreCount, 0);
+    activeTicksPerCore.resize(coreCount, 0);
+
     // core assignments
     coreThreads.resize(coreCount);
     coreAssignments.resize(coreCount, nullptr);
@@ -32,6 +35,12 @@ void RRScheduler::start() {
         tickThreads[i] = std::thread([this, i]() {
             while (running) {
                 incrementCoreTick(i);
+                totalTicksPerCore[i]++;
+
+                if (coreAssignments[i] && cores[i]->busy) {
+                    activeTicksPerCore[i]++;
+                }
+                
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
         });

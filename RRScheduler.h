@@ -20,6 +20,10 @@ private:
 
     Config config;
     std::shared_ptr<MemoryManager> memoryManager;
+
+    std::vector<uint64_t> totalTicksPerCore;
+    std::vector<uint64_t> activeTicksPerCore;
+
 public:
     RRScheduler(int cores, int delay, unsigned long long quantum, const Config& config, std::shared_ptr<MemoryManager> memManager);
 
@@ -32,4 +36,20 @@ public:
     // Override printing methods to use coreAssignments
     int getBusyCoreCount() const override;
     std::vector<std::shared_ptr<Process>> getRunningProcesses() const override;
+
+    uint64_t getTotalCpuTicks() const override {
+        uint64_t sum = 0;
+        for (auto ticks : totalTicksPerCore) sum += ticks;
+        return sum;
+    }
+
+    uint64_t getActiveCpuTicks() const override {
+        uint64_t sum = 0;
+        for (auto ticks : activeTicksPerCore) sum += ticks;
+        return sum;
+    }
+
+    uint64_t getIdleCpuTicks() const override {
+        return getTotalCpuTicks() - getActiveCpuTicks();
+    }
 };

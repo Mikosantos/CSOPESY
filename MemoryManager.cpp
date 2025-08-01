@@ -248,31 +248,31 @@ size_t MemoryManager::getUsedMemoryBytes() const {
     previous version of deallocateProcess
 */
 
-// void MemoryManager::deallocateProcess(int pid) {
-//     auto it = pageTables.find(pid);
-//     if (it == pageTables.end()) return;
+void MemoryManager::deallocateProcess(int pid) {
+    auto it = pageTables.find(pid);
+    if (it == pageTables.end()) return;
 
-//     // Return used frames to free pool
-//     for (auto& entry : it->second) {
-//         if (entry.valid && entry.frameNo >= 0) {
-//             freeFrames.push(entry.frameNo);
-//         }
-//     }
+    // Return used frames to free pool
+    for (auto& entry : it->second) {
+        if (entry.valid && entry.frameNo >= 0) {
+            freeFrames.push(entry.frameNo);
+        }
+    }
 
-//     // Remove from FIFO queue
-//     std::queue<std::pair<int, int>> newQueue;
-//     while (!fifoQueue.empty()) {
-//         auto front = fifoQueue.front();
-//         fifoQueue.pop();
-//         if (front.first != pid) {
-//             newQueue.push(front);
-//         }
-//     }
-//     fifoQueue = std::move(newQueue);
+    // Remove from FIFO queue
+    std::queue<std::pair<int, int>> newQueue;
+    while (!fifoQueue.empty()) {
+        auto front = fifoQueue.front();
+        fifoQueue.pop();
+        if (front.first != pid) {
+            newQueue.push(front);
+        }
+    }
+    fifoQueue = std::move(newQueue);
 
-//     // Remove page table
-//     pageTables.erase(it);
-// }
+    // Remove page table
+    pageTables.erase(it);
+}
 
 /*
     * cleanBackingStore removes all entries for the given process ID from the backing store file.
@@ -315,33 +315,33 @@ void MemoryManager::cleanBackingStore(int pid) {
     * deallocateProcess deallocates the memory for a process by removing its page table and freeing its frames.
     * It also cleans up the backing store entries for the process.
 */
-void MemoryManager::deallocateProcess(int pid) {
-    auto it = pageTables.find(pid);
-    if (it == pageTables.end()) return;
+// void MemoryManager::deallocateProcess(int pid) {
+//     auto it = pageTables.find(pid);
+//     if (it == pageTables.end()) return;
 
-    // Return used frames to free pool and clear memory
-    for (auto& entry : it->second) {
-        if (entry.valid && entry.frameNo >= 0 && entry.frameNo < physicalMemory.size()) {
-            std::fill(physicalMemory[entry.frameNo].data.begin(),
-                      physicalMemory[entry.frameNo].data.end(), 0);
-            freeFrames.push(entry.frameNo);
-        }
-    }
+//     // Return used frames to free pool and clear memory
+//     for (auto& entry : it->second) {
+//         if (entry.valid && entry.frameNo >= 0 && entry.frameNo < physicalMemory.size()) {
+//             std::fill(physicalMemory[entry.frameNo].data.begin(),
+//                       physicalMemory[entry.frameNo].data.end(), 0);
+//             freeFrames.push(entry.frameNo);
+//         }
+//     }
 
-    // Remove from FIFO queue
-    std::queue<std::pair<int, int>> newQueue;
-    while (!fifoQueue.empty()) {
-        auto front = fifoQueue.front();
-        fifoQueue.pop();
-        if (front.first != pid) {
-            newQueue.push(front);
-        }
-    }
-    fifoQueue = std::move(newQueue);
+//     // Remove from FIFO queue
+//     std::queue<std::pair<int, int>> newQueue;
+//     while (!fifoQueue.empty()) {
+//         auto front = fifoQueue.front();
+//         fifoQueue.pop();
+//         if (front.first != pid) {
+//             newQueue.push(front);
+//         }
+//     }
+//     fifoQueue = std::move(newQueue);
 
-    // Remove page table
-    pageTables.erase(it);
+//     // Remove page table
+//     pageTables.erase(it);
 
-    // Clean up backing store entries for this process
-    cleanBackingStore(pid);
-}
+//     // Clean up backing store entries for this process
+//     cleanBackingStore(pid);
+// }

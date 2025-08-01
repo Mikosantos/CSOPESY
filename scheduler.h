@@ -37,6 +37,9 @@ protected:
 
     std::vector<std::thread> tickThreads;
 
+    std::atomic<uint64_t> totalCpuTicks = 0;
+    std::atomic<uint64_t> idleCpuTicks = 0;
+
 public:
     Scheduler(int cores, unsigned long long delay);
     virtual ~Scheduler();
@@ -80,6 +83,12 @@ public:
     // void incrementSystemTick() {
     //     systemTick++;
     // }
+
+    virtual uint64_t getTotalCpuTicks() const { return totalCpuTicks.load(); }
+    virtual uint64_t getIdleCpuTicks() const { return idleCpuTicks.load(); }
+    virtual uint64_t getActiveCpuTicks() const {
+        return totalCpuTicks.load() - idleCpuTicks.load();
+    }
 };
 
 
