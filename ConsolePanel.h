@@ -2,6 +2,7 @@
 #include "Console.h"
 #include "Process.h"
 #include "RRScheduler.h"
+#include "MemoryManager.h"
 
 #include <string>
 #include <vector>
@@ -27,5 +28,6 @@ class ConsolePanel{
         static void listProcesses(const std::vector<std::shared_ptr<Process>>& allProcesses,
                                  const std::vector<std::shared_ptr<Process>>& runningProcesses);
 
-        void listMemoryUsageOfRunningProcesses(const std::vector<std::shared_ptr<Process>>& runningProcesses);
+        void listMemoryUsageOfRunningProcesses(const std::vector<std::shared_ptr<Process>>& runningProcesses, 
+                                               std::shared_ptr<MemoryManager> memManager);
 };

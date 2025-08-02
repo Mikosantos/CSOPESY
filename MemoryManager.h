@@ -8,6 +8,7 @@
 #include <fstream>
 #include <cstdint>
 #include <mutex>
+#include <memory>
 
 struct Frame {
     int processId = -1;
@@ -31,14 +32,15 @@ private:
     int numFrames;
 
     std::vector<Frame> physicalMemory;
-    std::unordered_map<int, std::vector<PageTableEntry>> pageTables;
+    // std::unordered_map<int, std::vector<PageTableEntry>> pageTables;
+    std::unordered_map<int, std::shared_ptr<std::vector<PageTableEntry>>> pageTables;
     std::queue<int> freeFrames;
     std::queue<std::pair<int, int>> fifoQueue;
 
     int pagesPagedIn = 0;
     int pagesPagedOut = 0;
 
-    std::mutex memoryMutex;
+    mutable std::mutex memoryMutex;
 
 public:
     MemoryManager(size_t totalMemoryBytes, size_t memoryPerFrame);
@@ -66,4 +68,6 @@ public:
 
     void cleanBackingStore(int pid);
     void deallocateProcess(int pid);
+
+    size_t getProcessUsedMemory(int pid) const;
 };

@@ -27,6 +27,8 @@
 
 #define ORANGE "\033[38;5;208m"
 #define RESET  "\033[0m"
+#define CYAN   "\033[38;5;51m"
+#define BLUE   "\033[34m"
 
 using namespace std;
 
@@ -139,6 +141,8 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
     } 
 
     // MO2 NEW COMMANDS
+
+    // TODO: Check numbers/output
     else if (cmd == "process-smi") {
         constexpr size_t KIB = 1024;
         constexpr size_t MIB = KIB * 1024;
@@ -147,31 +151,36 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
         int total = scheduler->getAvailableCoreCount() + busy;
         int cpuUtil = (static_cast<double>(busy) / total) * 100;
 
+        // Byte
         size_t usedMem = memoryManager->getUsedMemoryBytes();
+        size_t totalMem = config.maxOverallMemory;
+
+        // MiB
         // double usedMiB = usedMem / (1024.0 * 1024.0);
         // double totalMiB = config.maxOverallMemory / (1024.0 * 1024.0);
 
-        double usedKiB = usedMem / static_cast<double>(KIB);
-        double totalKiB = config.maxOverallMemory / static_cast<double>(KIB);
+        // KiB
+        // double usedKiB = usedMem / static_cast<double>(KIB);
+        // double totalKiB = config.maxOverallMemory / static_cast<double>(KIB);
         
         int memUtil = static_cast<int>((static_cast<double>(usedMem) / config.maxOverallMemory) * 100);
 
         std::cout << "\n";
         std::cout << "+----------------------------------------------------+\n";
-        std::cout << "|      PROCESS-SMI V01.00 DRIVER VERSION: 01.00      |\n";
+        std::cout << "|      PROCESS-SMI V01." << ORANGE "00   " << RESET << "DRIVER VERSION: 01." << ORANGE << "00" << RESET << "    |\n";
         std::cout << "+----------------------------------------------------+\n";
-        std::cout << "CPU-Util      : " << cpuUtil  << "%\n";
-        std::cout << "Memory Usage  : " << usedKiB  << " MiB / " << totalKiB << " MiB\n";
-        std::cout << "Memory Util   : " << memUtil  << "%\n\n";
+        std::cout << "CPU-Util      : " << cpuUtil  << BLUE   << "%\n"  << RESET;
+        std::cout << "Memory Usage  : " << usedMem  << ORANGE <<" Byte" << BLUE << " / " << RESET << totalMem << ORANGE << " Byte\n" << RESET;
+        std::cout << "Memory Util   : " << memUtil  << BLUE   << "%\n\n"<< RESET;
 
         std::cout << "======================================================\n";
-        std::cout << "Running processes and memory usage:\n";
+        std::cout << "Running processes " << BLUE "and"  << RESET << " memory usage:\n";
         std::cout << "+----------------------------------------------------+\n";
-        consolePanel.listMemoryUsageOfRunningProcesses(scheduler->getRunningProcesses());
+            consolePanel.listMemoryUsageOfRunningProcesses(scheduler->getRunningProcesses(), memoryManager);
         std::cout << "+----------------------------------------------------+\n\n";
     }
 
-     // TODO: Implement vmstat command
+     // TODO: Check numbers/output
     else if (cmd == "vmstat") {
         std::cout << "+----------------------------------------------------+\n";
         std::cout << "|                       VMSTAT                       |\n";

@@ -41,7 +41,7 @@ bool MemoryManager::allocateProcess(int pid, int memoryBytes) {
         return false; // not enough memory
     }
 
-    pageTables[pid] = std::vector<PageTableEntry>(numPages);
+    pageTables[pid] = std::make_shared<std::vector<PageTableEntry>>(numPages);
     return true;
 }
 
@@ -52,16 +52,14 @@ bool MemoryManager::allocateProcess(int pid, int memoryBytes) {
 */
 bool MemoryManager::ensurePageLoaded(int pid, int pageNo) {
     std::lock_guard<std::mutex> lock(memoryMutex);
-    
+
     auto it = pageTables.find(pid);
     if (it == pageTables.end()) {
-        // std::cerr << "[ERROR] ensurePageLoaded: No page table for PID " << pid << "\n";
         return false;
     }
-    auto& pageTable = it->second;
+    auto& pageTable = *(it->second);
 
     if (pageNo >= pageTable.size()) {
-        // std::cerr << "[ERROR] Invalid page number for process " << pid << "\n";
         return false;
     }
 
@@ -78,17 +76,18 @@ bool MemoryManager::ensurePageLoaded(int pid, int pageNo) {
 
             int victimPid = victim.first;
             int victimPage = victim.second;
-            auto& victimEntry = pageTables[victimPid][victimPage];
+            auto& victimPageTable = *(pageTables[victimPid]);
+            auto& victimEntry = victimPageTable[victimPage];
 
             frameNo = victimEntry.frameNo;
             if (victimEntry.dirty) {
                 savePageToBackingStore(victimPid, victimPage, victimEntry.frameNo);
             }
 
-            pageTables[victimPid][victimPage] = PageTableEntry{};
+            victimEntry = PageTableEntry{};
             ++pagesPagedOut;
         } else {
-            return false; // No frames available and no FIFO queue to evict
+            return false;
         }
 
         loadPageFromBackingStore(pid, pageNo, frameNo);
@@ -116,21 +115,20 @@ void MemoryManager::writeByte(int pid, int virtualAddress, uint16_t value) {
 
     auto it = pageTables.find(pid);
     if (it == pageTables.end()) {
-        std::cerr << "[ERROR] ensurePageLoaded: No page table for PID " << pid << "\n";
+        // std::cerr << "[ERROR] ensurePageLoaded: No page table for PID " << pid << "\n";
         return;
     }
-    auto& pageTable = it->second;
-
+    auto& pageTable = *(it->second);
 
     int frameNo = pageTable[pageNo].frameNo;
 
     if (frameNo < 0 || frameNo >= physicalMemory.size()) {
-        std::cerr << "[ERROR] writeByte: Invalid frame number " << frameNo << " for page " << pageNo << "\n";
+        // std::cerr << "[ERROR] writeByte: Invalid frame number " << frameNo << " for page " << pageNo << "\n";
         return;
     }
 
     if (offset + 1 >= pageSize) {
-        std::cerr << "[ERROR] writeByte: Not enough space to write 2 bytes at offset " << offset << "\n";
+        // std::cerr << "[ERROR] writeByte: Not enough space to write 2 bytes at offset " << offset << "\n";
         return;
     }
 
@@ -153,25 +151,26 @@ uint16_t MemoryManager::readByte(int pid, int virtualAddress) {
     // int frameNo = pageTables[pid][pageNo].frameNo;
     auto it = pageTables.find(pid);
     if (it == pageTables.end()) {
-        std::cerr << "[ERROR] readByte: No page table for PID " << pid << "\n";
+        // std::cerr << "[ERROR] readByte: No page table for PID " << pid << "\n";
         return 0;
     }
-    auto& pageTable = it->second;
+
+    auto& pageTable = *(it->second);
 
     if (pageNo >= pageTable.size()) {
-        std::cerr << "[ERROR] readByte: Page number out of bounds for PID " << pid << "\n";
+        // std::cerr << "[ERROR] readByte: Page number out of bounds for PID " << pid << "\n";
         return 0;
     }
 
     int frameNo = pageTable[pageNo].frameNo;
 
     if (frameNo < 0 || frameNo >= physicalMemory.size()) {
-        std::cerr << "[ERROR] readByte: Invalid frame number " << frameNo << " for page " << pageNo << "\n";
+        // std::cerr << "[ERROR] readByte: Invalid frame number " << frameNo << " for page " << pageNo << "\n";
         return 0;
     }
 
     if (offset + 1 >= pageSize) {
-        std::cerr << "[ERROR] readByte: Not enough bytes to read 2-byte value at offset " << offset << "\n";
+        // std::cerr << "[ERROR] readByte: Not enough bytes to read 2-byte value at offset " << offset << "\n";
         return 0;
     }
 
@@ -192,7 +191,6 @@ uint16_t MemoryManager::readByte(int pid, int virtualAddress) {
     idk if its required to save the whole page data like this, but this is how it was implemented in the original code.
 */
 void MemoryManager::savePageToBackingStore(int pid, int pageNo, int frameNo) {
-    // TODO: FIX THIS
     std::ofstream ofs("csopesy-backing-store.txt", std::ios::app);
     if (!ofs.is_open()) return;
 
@@ -240,6 +238,8 @@ void MemoryManager::loadPageFromBackingStore(int pid, int pageNo, int frameNo) {
     * It calculates the used memory by multiplying the number of used frames by the page size.
 */
 size_t MemoryManager::getUsedMemoryBytes() const {
+    std::lock_guard<std::mutex> lock(memoryMutex);
+    
     size_t usedFrames = numFrames - freeFrames.size();
     return usedFrames * pageSize;
 }
@@ -249,11 +249,13 @@ size_t MemoryManager::getUsedMemoryBytes() const {
 */
 
 void MemoryManager::deallocateProcess(int pid) {
+    std::lock_guard<std::mutex> lock(memoryMutex);
+
     auto it = pageTables.find(pid);
     if (it == pageTables.end()) return;
 
     // Return used frames to free pool
-    for (auto& entry : it->second) {
+    for (auto& entry : *(it->second)) {
         if (entry.valid && entry.frameNo >= 0) {
             freeFrames.push(entry.frameNo);
         }
@@ -272,6 +274,7 @@ void MemoryManager::deallocateProcess(int pid) {
 
     // Remove page table
     pageTables.erase(it);
+    cleanBackingStore(pid);
 }
 
 /*
@@ -345,3 +348,17 @@ void MemoryManager::cleanBackingStore(int pid) {
 //     // Clean up backing store entries for this process
 //     cleanBackingStore(pid);
 // }
+
+size_t MemoryManager::getProcessUsedMemory(int pid) const {
+    std::lock_guard<std::mutex> lock(memoryMutex);
+
+    auto it = pageTables.find(pid);
+    if (it == pageTables.end() || !it->second) return 0;
+
+    const auto& table = *(it->second);
+    int usedFrames = 0;
+    for (const auto& entry : table) {
+        if (entry.valid) ++usedFrames;
+    }
+    return usedFrames * pageSize;
+}

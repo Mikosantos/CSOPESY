@@ -12,6 +12,7 @@
 #define ORANGE "\033[38;5;208m"
 #define RESET  "\033[0m"
 #define BLUE   "\033[34m"
+#define LIGHT_RED "\033[91m"
 
 std::shared_ptr<Console> ConsolePanel::curPanel = nullptr;
 std::vector<std::shared_ptr<Console>> ConsolePanel::consolePanels;
@@ -108,18 +109,33 @@ void ConsolePanel::addConsolePanel(std::shared_ptr<Console> screenPanel){
     consolePanels.push_back(screenPanel);
 }
 
-void ConsolePanel::listMemoryUsageOfRunningProcesses(const std::vector<std::shared_ptr<Process>>& runningProcesses) {
+void ConsolePanel::listMemoryUsageOfRunningProcesses(const std::vector<std::shared_ptr<Process>>& runningProcesses, std::shared_ptr<MemoryManager> memManager) {
     constexpr size_t KIB = 1024;
     
+    if (runningProcesses.empty()) {
+        std::cout << LIGHT_RED << "No running processes.\n" << RESET;
+        return;
+    }
+
     for (const auto& proc : runningProcesses) {
         if (proc->getProcessName() == "MAIN_SCREEN") continue;
 
-        size_t memBytes = proc->getMemorySize();
+        // no need
+        // Only show if memory was successfully allocated
+        // if (!proc->isMemoryInitialized()) continue;
+        // if (proc->getCoreNo() == -1) continue; // triggers bug
+
+        // size_t memBytes = proc->getMemorySize();
+        size_t memBytes = memManager->getProcessUsedMemory(proc->getProcessNo());
+
+        // MiB
         // double memMiB = memBytes / (1024.0 * 1024.0);
-        double memMiB = memBytes / static_cast<double>(KIB);
+
+        // KiB
+        // double memMiB = memBytes / static_cast<double>(KIB);
 
         std::cout << std::left << std::setw(20) << proc->getProcessName()
-                  << std::setw(15) << std::fixed << std::setprecision(5) << memMiB
+                  << ORANGE << memBytes << " Byte" << RESET
                   << "\n";
     }
 }

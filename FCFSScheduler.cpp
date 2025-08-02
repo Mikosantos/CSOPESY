@@ -139,6 +139,7 @@ void FCFSScheduler::coreWorker(int coreId) {
                     {
                         std::lock_guard<std::mutex> qLock(queueMutex);
                         readyQueue.push(proc);
+                        // proc->setCoreNum(-1);
                     }
                 }
 
@@ -166,6 +167,7 @@ void FCFSScheduler::coreWorker(int coreId) {
         // Only mark and clean up if not requeued
         if (!requeued) {
             proc->setFinished(true);
+            // proc->setCoreNum(-1); // Mark as not assigned to any core
 
             // DEALLOCATE MEMORY
             if (memoryManager) {
