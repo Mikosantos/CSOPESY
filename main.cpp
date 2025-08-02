@@ -182,6 +182,7 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
 
      // TODO: Check numbers/output
     else if (cmd == "vmstat") {
+        std::cout << "\n";
         std::cout << "+----------------------------------------------------+\n";
         std::cout << "|                       VMSTAT                       |\n";
         std::cout << "+----------------------------------------------------+\n";
@@ -197,17 +198,16 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
         uint64_t idleCpuTicks  = scheduler->getIdleCpuTicks();
         uint64_t activeCpuTicks = totalCpuTicks - idleCpuTicks;
 
-        std::cout << std::fixed << std::setprecision(2);
-        std::cout << (totalMemory / 1024.0) << " K Total Memory\n";
-        std::cout << (usedMemory  / 1024.0) << " K Used Memory\n";
-        std::cout << (freeMemory  / 1024.0) << " K Free Memory\n\n";
+        std::cout << ORANGE << totalMemory << RESET << " total Memory\n";
+        std::cout << ORANGE << usedMemory  << RESET << " used Memory\n";
+        std::cout << ORANGE << freeMemory  << RESET << " free Memory\n\n";
 
-        std::cout << idleCpuTicks   << " Idle CPU Ticks\n";
-        std::cout << activeCpuTicks << " Active CPU Ticks\n";
-        std::cout << totalCpuTicks  << " Total CPU Ticks\n\n";
+        std::cout << ORANGE << idleCpuTicks   << RESET << " Idle CPU Ticks\n";
+        std::cout << ORANGE << activeCpuTicks << RESET << " Active CPU Ticks\n";
+        std::cout << ORANGE << totalCpuTicks  << RESET << " Total CPU Ticks\n\n";
 
-        std::cout << pagedIn  << " Num Paged In\n";
-        std::cout << pagedOut << " Num Paged Out\n";
+        std::cout << ORANGE << pagedIn  << RESET << " Num Paged In\n";
+        std::cout << ORANGE << pagedOut << RESET << " Num Paged Out\n";
         std::cout << "+----------------------------------------------------+\n\n";
 
     }
