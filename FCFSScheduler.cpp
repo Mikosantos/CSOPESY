@@ -70,9 +70,11 @@ void FCFSScheduler::schedulerLoop() {
 
                 if (nextProc) {
                     if (!nextProc->isMemoryInitialized()) {
+                        std::lock_guard<std::mutex> memLock(memoryAllocationMutex);
 
                         // Try to allocate memory; if not enough, requeue and skip this core cycle
                         if (!memoryManager->allocateProcess(nextProc->getProcessNo(), nextProc->getMemSize())) {
+                            nextProc->setMemoryInitialized(false);
                             std::lock_guard<std::mutex> qLock(queueMutex);
                             readyQueue.push(nextProc);
                             continue;
@@ -169,6 +171,8 @@ void FCFSScheduler::coreWorker(int coreId) {
             proc->setFinished(true);
             // proc->setCoreNum(-1); // Mark as not assigned to any core
 
+            proc->setMemoryInitialized(false);
+
             // DEALLOCATE MEMORY
             if (memoryManager) {
                 memoryManager->deallocateProcess(proc->getProcessNo());
@@ -180,4 +184,16 @@ void FCFSScheduler::coreWorker(int coreId) {
         core->busy = false;
         lock.unlock();
     }
+}
+
+std::vector<std::shared_ptr<Process>> FCFSScheduler::getReadyQueueSnapshot() const {
+    std::vector<std::shared_ptr<Process>> snapshot;
+    std::lock_guard<std::mutex> lock(queueMutex);
+    std::queue<std::shared_ptr<Process>> tempQueue = readyQueue;
+
+    while (!tempQueue.empty()) {
+        snapshot.push_back(tempQueue.front());
+        tempQueue.pop();
+    }
+    return snapshot;
 }

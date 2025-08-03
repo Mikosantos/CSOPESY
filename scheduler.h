@@ -89,6 +89,8 @@ public:
     virtual uint64_t getActiveCpuTicks() const {
         return totalCpuTicks.load() - idleCpuTicks.load();
     }
+
+    virtual std::vector<std::shared_ptr<Process>> getReadyQueueSnapshot() const = 0;
 };
 
 

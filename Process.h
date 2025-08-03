@@ -182,6 +182,10 @@ class Process {
         bool isMemoryInitialized() const { return memoryInitialized; }
         void markMemoryInitialized() { memoryInitialized = true; }
 
+        void setMemoryInitialized(bool initialized) {
+            memoryInitialized = initialized;
+        }
+
         bool isDeclared(const std::string& name) const {
             return symbolTableOffsets.find(name) != symbolTableOffsets.end();
         }

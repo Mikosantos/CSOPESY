@@ -29,6 +29,7 @@
 #define RESET  "\033[0m"
 #define CYAN   "\033[38;5;51m"
 #define BLUE   "\033[34m"
+#define LIGHT_RED "\033[91m"
 
 using namespace std;
 
@@ -140,8 +141,7 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
         report_util(processList, scheduler->getRunningProcesses());
     } 
 
-    // MO2 NEW COMMANDS
-
+    // MO2 NEW COMMANDS ===========
     // TODO: Check numbers/output
     else if (cmd == "process-smi") {
         constexpr size_t KIB = 1024;
@@ -396,6 +396,33 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
         scheduler->addProcess(newProc);
     }
     // 
+
+    // ADDITIONAL FEATURE =======
+    else if (cmd == "print-ready") {
+        auto readyList = scheduler->getReadyQueueSnapshot();
+
+        std::cout << "\n+----------------------------------------------------+\n";
+        std::cout << "|  Ready queue count: " << ORANGE << readyList.size() << RESET << "\n";
+
+        if (readyList.empty()) {
+            std::cout << "+----------------------------------------------------+\n";
+            std::cout << LIGHT_RED << "|  Ready queue is empty.                             |\n" << RESET;
+            std::cout << "+----------------------------------------------------+\n\n";
+        } else {
+            std::cout << "+----------------------------------------------------+\n";
+            std::cout << BLUE << "| Current Ready Queue:                               |\n" << RESET;
+            std::cout << "+----------------------------------------------------+\n";
+            for (const auto& proc : readyList) {
+                std::cout << "Process: " << ORANGE << proc->getProcessName() << RESET
+                        << " (PID " << proc->getProcessNo() << "), "
+                        << "Completed: " << proc->getCompletedCommands()
+                        << " / " << proc->getTotalNoOfCommands()
+                        << "\n";
+            }
+            std::cout << "+----------------------------------------------------+\n\n";
+        }
+    }
+    // =======
 
     else {
         cout << "Unknown command! Type \"help\" for commandlist.\n\n";
@@ -687,10 +714,15 @@ void printSystemSummary() {
 }
 
 void printHelpMenu() {
+    cout << "\n";
+    cout << "+----------------------------------------------------+\n";
+    cout << BLUE << "|                    HELP MENU                       |\n" << RESET;
+    cout << "+----------------------------------------------------+\n";
     cout << "  initialize                       - Initialize system\n";
-    cout << "  screen -s <name>                 - Start new screen\n";
-    cout << "  screen -r <name>                 - Resume existing screen\n";
-    cout << "  screen -c <name> <mem_size> \"<instructions>\"     - User defined instruction\n";
+    cout << "  screen -s <name>                 - Create process\n";
+    cout << "  screen -r <name>                 - Resume existing process\n";
+    cout << "  screen -c <name> <mem_size>      - Create with user-defined instructions\n";
+    cout << "         \"<instructions>\"\n";
     cout << "  screen -ls                       - List all screen processes\n";
     cout << "  scheduler-start                  - Run scheduler start\n";
     cout << "  scheduler-stop                   - Stop scheduler\n";
@@ -700,6 +732,12 @@ void printHelpMenu() {
     cout << "  clear                            - Clear the screen\n";
     cout << "  help                             - Show this help menu\n";
     cout << "  exit                             - Exit the program\n\n";
+
+    cout << "+----------------------------------------------------+\n";
+    cout << BLUE << "|  Additional commands for debugging                 |\n" << RESET;
+    cout << "+----------------------------------------------------+\n";
+    cout << "  print-ready                      - Print current ready queue\n\n";
+
 }
 
 void handleExit() {

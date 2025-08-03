@@ -1,5 +1,6 @@
 #pragma once
 #include "Scheduler.h"
+#include <mutex>
 
 class FCFSScheduler : public Scheduler {
 public:
@@ -28,10 +29,16 @@ public:
         return getTotalCpuTicks() - getActiveCpuTicks();
     }
 
+    std::vector<std::shared_ptr<Process>> getReadyQueueSnapshot() const override;
+
 private:
     Config config;
     std::shared_ptr<MemoryManager> memoryManager;
 
     std::vector<uint64_t> totalTicksPerCore;
     std::vector<uint64_t> activeTicksPerCore;
+
+    mutable std::mutex queueMutex;
+
+    std::mutex memoryAllocationMutex;
 };

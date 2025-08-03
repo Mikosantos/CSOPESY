@@ -267,3 +267,16 @@ std::vector<std::shared_ptr<Process>> RRScheduler::getRunningProcesses() const {
     
     return result;
 }
+
+std::vector<std::shared_ptr<Process>> RRScheduler::getReadyQueueSnapshot() const {
+    std::vector<std::shared_ptr<Process>> snapshot;
+    std::lock_guard<std::mutex> lock(queueMutex);
+    
+    std::queue<std::shared_ptr<Process>> tempQueue = readyQueue;
+
+    while (!tempQueue.empty()) {
+        snapshot.push_back(tempQueue.front());
+        tempQueue.pop();
+    }
+    return snapshot;
+}

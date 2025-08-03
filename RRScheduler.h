@@ -24,6 +24,8 @@ private:
     std::vector<uint64_t> totalTicksPerCore;
     std::vector<uint64_t> activeTicksPerCore;
 
+    mutable std::mutex queueMutex;
+
 public:
     RRScheduler(int cores, int delay, unsigned long long quantum, const Config& config, std::shared_ptr<MemoryManager> memManager);
 
@@ -52,4 +54,6 @@ public:
     uint64_t getIdleCpuTicks() const override {
         return getTotalCpuTicks() - getActiveCpuTicks();
     }
+
+    std::vector<std::shared_ptr<Process>> getReadyQueueSnapshot() const override;
 };

@@ -86,6 +86,7 @@ void ConsolePanel::listProcesses(const std::vector<std::shared_ptr<Process>>& al
     }
 
     std::cout << "\nFinished Processes:\n";
+    int count = 0;
     for (const auto& proc : allProcesses) {
         if (proc->getProcessName() == "MAIN_SCREEN") continue;
 
@@ -96,7 +97,14 @@ void ConsolePanel::listProcesses(const std::vector<std::shared_ptr<Process>>& al
                       << ORANGE     << proc->getCompletedCommands() << RESET << BLUE << " / " << RESET
                       << ORANGE     << proc->getTotalNoOfCommands() << RESET
                       << "\n";
+            count++;
         }
+    }
+
+    if (count == 0) {
+        std::cout << LIGHT_RED << "\nNo finished processes.\n" << RESET;
+    } else {
+        std::cout << "\nTotal finished processes: " << ORANGE << count << RESET << "\n";
     }
 
     std::cout << "======================================\n\n";
