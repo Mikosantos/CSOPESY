@@ -146,11 +146,7 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
     else if (cmd == "process-smi") {
         constexpr size_t KIB = 1024;
         constexpr size_t MIB = KIB * 1024;
-
-        int busy = scheduler->getBusyCoreCount();
-        int total = scheduler->getAvailableCoreCount() + busy;
-        int cpuUtil = (static_cast<double>(busy) / total) * 100;
-
+        
         // Byte
         size_t usedMem = memoryManager->getUsedMemoryBytes();
         size_t totalMem = config.maxOverallMemory;
@@ -162,7 +158,12 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
         // KiB
         // double usedKiB = usedMem / static_cast<double>(KIB);
         // double totalKiB = config.maxOverallMemory / static_cast<double>(KIB);
-        
+
+        int busy = scheduler->getBusyCoreCount();
+        int total = scheduler->getAvailableCoreCount() + busy;
+        auto runningProcesses = scheduler->getRunningProcesses();
+
+        int cpuUtil = (static_cast<double>(busy) / total) * 100;
         int memUtil = static_cast<int>((static_cast<double>(usedMem) / config.maxOverallMemory) * 100);
 
         std::cout << "\n";
@@ -176,7 +177,7 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
         std::cout << "======================================================\n";
         std::cout << "Running processes " << BLUE "and"  << RESET << " memory usage:\n";
         std::cout << "+----------------------------------------------------+\n";
-            consolePanel.listMemoryUsageOfRunningProcesses(scheduler->getRunningProcesses(), memoryManager);
+            consolePanel.listMemoryUsageOfRunningProcesses(runningProcesses, memoryManager);
         std::cout << "+----------------------------------------------------+\n\n";
     }
 

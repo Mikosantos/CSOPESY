@@ -69,5 +69,6 @@ public:
     void cleanBackingStore(int pid);
     void deallocateProcess(int pid);
 
+    std::unordered_map<int, size_t> getAllProcessMemoryUsage() const;
     size_t getProcessUsedMemory(int pid) const;
 };

@@ -367,3 +367,21 @@ size_t MemoryManager::getProcessUsedMemory(int pid) const {
     }
     return usedFrames * pageSize;
 }
+
+std::unordered_map<int, size_t> MemoryManager::getAllProcessMemoryUsage() const {
+    std::lock_guard<std::mutex> lock(memoryMutex);
+    std::unordered_map<int, size_t> result;
+
+    for (const auto& [pid, tablePtr] : pageTables) {
+        if (!tablePtr) continue;
+
+        const auto& table = *tablePtr;
+        int usedFrames = 0;
+        for (const auto& entry : table) {
+            if (entry.valid) ++usedFrames;
+        }
+        result[pid] = usedFrames * pageSize;
+    }
+
+    return result;
+}
