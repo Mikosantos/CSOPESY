@@ -29,19 +29,24 @@ MemoryManager::MemoryManager(size_t totalMemory, size_t pageSize)
 }
 
 /*
-    * allocateProcess allocates memory for a process by creating a page table for the given process ID.
+    * allocateProcess allocates memory for a process by creating a page table associated with the given process ID.
     * It calculates the number of pages needed based on the memory size and page size.
+    * Each page table entry is initialized as invalid and unassigned to any frame.
 */
 bool MemoryManager::allocateProcess(int pid, int memoryBytes) {
     std::lock_guard<std::mutex> lock(memoryMutex);
 
     int numPages = (memoryBytes + pageSize - 1) / pageSize;
 
-    if (numPages > freeFrames.size()) {
-        return false; // not enough memory
+    // Set up page table with numPages entries (each initially set to invalid)
+    auto pageTable = std::make_shared<std::vector<PageTableEntry>>(numPages);
+
+    for (auto& entry: *pageTable) {
+        entry.valid = false;
+        entry.frameNo = -1;
     }
 
-    pageTables[pid] = std::make_shared<std::vector<PageTableEntry>>(numPages);
+    pageTables[pid] = pageTable;
     return true;
 }
 
