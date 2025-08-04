@@ -117,33 +117,33 @@ void ConsolePanel::addConsolePanel(std::shared_ptr<Console> screenPanel){
     consolePanels.push_back(screenPanel);
 }
 
-void ConsolePanel::listMemoryUsageOfRunningProcesses(const std::vector<std::shared_ptr<Process>>& runningProcesses, std::shared_ptr<MemoryManager> memManager) {
+void ConsolePanel::listMemoryUsageOfRunningProcesses(
+    const std::vector<std::shared_ptr<Process>>& runningProcesses,
+    std::shared_ptr<MemoryManager> memManager
+) {
     constexpr size_t KIB = 1024;
-    
+
     if (runningProcesses.empty()) {
         std::cout << LIGHT_RED << "No running processes.\n" << RESET;
         return;
     }
 
+    std::unordered_map<int, size_t> memSnapshot = memManager->getAllProcessMemoryUsage();
+
     for (const auto& proc : runningProcesses) {
-        if (proc->getProcessName() == "MAIN_SCREEN") continue;
+        auto snapshot = proc->getAtomicSnapshot();
+        if (snapshot.processName == "MAIN_SCREEN") continue;
 
-        // no need
-        // Only show if memory was successfully allocated
-        // if (!proc->isMemoryInitialized()) continue;
-        // if (proc->getCoreNo() == -1) continue; // triggers bug
+        size_t memBytes = 0;
+        auto it = memSnapshot.find(snapshot.processNum);
+        if (it != memSnapshot.end()) {
+            memBytes = it->second;
+        }
 
-        // size_t memBytes = proc->getMemorySize();
-        size_t memBytes = memManager->getProcessUsedMemory(proc->getProcessNo());
+        // Skip processes with 0 memory usage
+        if (memBytes == 0) continue;
 
-        // MiB
-        // double memMiB = memBytes / (1024.0 * 1024.0);
-
-        // KiB
-        // double memMiB = memBytes / static_cast<double>(KIB);
-
-        std::cout << std::left << std::setw(20) << proc->getProcessName()
-                  << ORANGE << memBytes << " Byte" << RESET
-                  << "\n";
+        std::cout << std::left << std::setw(20) << snapshot.processName
+                  << ORANGE << memBytes << " Byte" << RESET << "\n";
     }
 }

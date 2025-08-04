@@ -113,6 +113,7 @@ class Process {
         unsigned long long completedCommands;
         unsigned long long totalNoCommands;
         std::string time;
+        int processNum;
         };
 
         ProcessSnapshot getAtomicSnapshot() const {
@@ -123,7 +124,8 @@ class Process {
             coreNum,
             completedCommands,
             totalNoOfCommands,
-            getRawTime()
+            getRawTime(),
+            processNum
             };
         }
         // ----------------------------------------------------------

@@ -20,7 +20,7 @@ protected:
         std::shared_ptr<Process> assignedProcess;
         std::mutex lock;
         std::condition_variable cv;
-        bool busy = false;
+        std::atomic<bool> busy{false};
     };
 
     std::vector<std::unique_ptr<CPUCore>> cores;
