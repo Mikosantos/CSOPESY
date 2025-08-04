@@ -140,6 +140,9 @@ void ConsolePanel::listMemoryUsageOfRunningProcesses(
             memBytes = it->second;
         }
 
+        // Skip processes with 0 memory usage
+        if (memBytes == 0) continue;
+
         std::cout << std::left << std::setw(20) << snapshot.processName
                   << ORANGE << memBytes << " Byte" << RESET << "\n";
     }
