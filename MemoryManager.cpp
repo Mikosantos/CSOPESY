@@ -37,11 +37,8 @@ bool MemoryManager::allocateProcess(int pid, int memoryBytes) {
 
     int numPages = (memoryBytes + pageSize - 1) / pageSize;
 
-    if (numPages > freeFrames.size()) {
-        return false; // not enough memory
-    }
-
     pageTables[pid] = std::make_shared<std::vector<PageTableEntry>>(numPages);
+    
     return true;
 }
 
