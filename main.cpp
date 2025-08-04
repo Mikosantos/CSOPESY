@@ -255,8 +255,6 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
 
         clearToProcessScreen();
         auto newProc = make_shared<Process>(procName, total, memSize, memoryManager); // new
-        // newProc->initializePages(config.memPerFrame);
-        // memoryManager->allocateProcess(newProc->getProcessNo(), memSize);
 
         auto instructions = generateRandomInstructions(total, procName, memSize, config);
         for (const auto& instr : instructions) {
@@ -384,10 +382,7 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
         // Create process
         clearToProcessScreen();
         auto newProc = make_shared<Process>(procName, rawInstructions.size(), memSize, memoryManager);
-        // newProc->initializePages(config.memPerFrame);
-        // memoryManager->allocateProcess(newProc->getProcessNo(), memSize);
-        // std::cout << "memSize: " << memSize << ", memPerFrame: " << config.memPerFrame << ", pages: " << (memSize + config.memPerFrame - 1) / config.memPerFrame << "\n"; // DEBUG
-
+        
         // Parse and add fixed instructions
         auto fixedInstructions = generateFixedInstructions(rawInstructions);
         for (const auto& instr : fixedInstructions) {
@@ -834,8 +829,6 @@ void startBatchGeneration(std::vector<std::shared_ptr<Process>>& processList, Co
 
                 // new process creation to support MO2
                 auto newProc = std::make_shared<Process>(procName, total, memSize, memoryManager);
-                // newProc->initializePages(config.memPerFrame);
-                // memoryManager->allocateProcess(newProc->getProcessNo(), memSize);
                 
                 // Previous code was:
                 // auto newProc = std::make_shared<Process>(procName, total);
