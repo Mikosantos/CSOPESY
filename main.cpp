@@ -5,6 +5,7 @@
 #include "Config.h"
 #include "Scheduler.h"
 #include "InstructionUtils.h"
+#include "Scheduler.h"
 #include "FCFSScheduler.h"
 #include "RRScheduler.h"
 #include "utils.h"
@@ -44,7 +45,7 @@ void initialize();
 void scheduler_start(std::vector<std::shared_ptr<Process>>& processList, ConsolePanel& consolePanel);
 void scheduler_stop();
 void report_util(const std::vector<std::shared_ptr<Process>>& allProcesses, const std::vector<std::shared_ptr<Process>>& runningProcesses);
-void printSystemSummary();
+void printSystemSummary(Scheduler* scheduler, std::shared_ptr<MemoryManager> memManager);
 void printHelpMenu();
 void handleExit();
 void clear();
@@ -215,7 +216,7 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
     // 
     
     else if (cmd == "screen" && args.size() == 1 && args[0] == "-ls") {
-        printSystemSummary();
+        printSystemSummary(scheduler.get(), memoryManager);
         std::vector<std::shared_ptr<Process>> trulyRunning;
         for (const auto& proc : scheduler->getRunningProcesses()) {
             if (memoryManager->getProcessUsedMemory(proc->getProcessNo()) > 0) {
@@ -656,49 +657,70 @@ void report_util(const std::vector<std::shared_ptr<Process>>& allProcesses,
         return;
     }
 
-    int busy = scheduler->getBusyCoreCount();
-    int total = scheduler->getAvailableCoreCount() + busy;
-    int utilization = (static_cast<double>(busy) / total) * 100;
+    // System Summary (like printSystemSummary)
+    int totalCores = scheduler->getTotalCoreCount();
+    int busy = 0;
+
+    for (int core = 0; core < totalCores; ++core) {
+        auto process = scheduler->getProcessOnCore(core);
+        if (process && memoryManager->getProcessUsedMemory(process->getProcessNo()) > 0) {
+            busy++;
+        }
+    }
+
+    int available = totalCores - busy;
+    int utilization = (static_cast<double>(busy) / totalCores) * 100;
 
     log << "========== System Summary ============\n";
-    if (scheduler) {
-        log << "CPU Utilization: " << utilization << "%\n";
-        log << "Cores Used: " << scheduler->getBusyCoreCount() << "\n";
-        log << "Cores available: " << scheduler->getAvailableCoreCount() << "\n";
-    } else {
-        log << "Scheduler not running.\n";
-    }
+    log << "CPU Utilization: " << utilization << "%\n";
+    log << "Cores Used: " << busy << "\n";
+    log << "Cores available: " << available << "\n";
     log << "======================================\n";
 
-    // Running processes
-    std::unordered_set<std::shared_ptr<Process>> runningSet(runningProcesses.begin(), runningProcesses.end());
+    // Process listing (like consolePanel.listProcesses)
+    std::vector<std::shared_ptr<Process>> trulyRunning;
+    for (const auto& proc : scheduler->getRunningProcesses()) {
+        if (memoryManager->getProcessUsedMemory(proc->getProcessNo()) > 0) {
+            trulyRunning.push_back(proc);
+        }
+    }
+
+    std::unordered_set<std::shared_ptr<Process>> runningSet(trulyRunning.begin(), trulyRunning.end());
 
     log << "Running Processes:\n";
-    for (const auto& proc : runningProcesses) {
+    for (const auto& proc : trulyRunning) {
         auto snapshot = proc->getAtomicSnapshot();
         if (snapshot.processName == "MAIN_SCREEN") continue;
 
         log << std::left << std::setw(15) << snapshot.processName
-                  << snapshot.time << "   "
-                  << "Core: " << snapshot.coreNo <<  "   "
-                  << snapshot.completedCommands
-                  << " / "
-                  << snapshot.totalNoCommands
-                  << "\n";
+            << snapshot.time << "   "
+            << "Core: " << snapshot.coreNo << "   "
+            << snapshot.completedCommands
+            << " / "
+            << snapshot.totalNoCommands
+            << "\n";
     }
 
     log << "\nFinished Processes:\n";
+    int count = 0;
     for (const auto& proc : allProcesses) {
         if (proc->getProcessName() == "MAIN_SCREEN") continue;
 
         if (proc->isFinished() && !runningSet.count(proc)) {
-            log << proc->getProcessName() << "\t\t"
-                      << proc->getRawTime()                            << "   "
-                      << "Finished!"                                << "   "
-                      << proc->getCompletedCommands() << " / "
-                      << proc->getTotalNoOfCommands() 
-                      << "\n";
+            log << std::left << std::setw(15) << proc->getProcessName()
+                << proc->getTime() << "   "
+                << "Finished!" << "   "
+                << proc->getCompletedCommands() << " / "
+                << proc->getTotalNoOfCommands()
+                << "\n";
+            count++;
         }
+    }
+
+    if (count == 0) {
+        log << "\nNo finished processes.\n";
+    } else {
+        log << "\nTotal finished processes: " << count << "\n";
     }
 
     log << "======================================\n\n";
@@ -709,17 +731,27 @@ void report_util(const std::vector<std::shared_ptr<Process>>& allProcesses,
     setColor(0x07); //default
 }
 
-void printSystemSummary() {
-    int busy = scheduler->getBusyCoreCount();
-    int total = scheduler->getAvailableCoreCount() + busy;
-    int utilization = (static_cast<double>(busy) / total) * 100;
+void printSystemSummary(Scheduler* scheduler, std::shared_ptr<MemoryManager> memManager) {
+    int totalCores = scheduler->getTotalCoreCount();
+    int busy = 0;
 
-    cout << "========== System Summary ============\n";
-    cout << "CPU Utilization: "    << utilization << "%\n";
-    cout << "Cores Used: "         << scheduler->getBusyCoreCount() << "\n";
-    cout << "Cores available: "    << scheduler->getAvailableCoreCount() << "\n";
-    cout << "======================================\n";
+    for (int core = 0; core < totalCores; ++core) {
+        auto process = scheduler->getProcessOnCore(core);
+        if (process && memManager->getProcessUsedMemory(process->getProcessNo()) > 0) {
+            busy++;
+        }
+    }
+
+    int available = totalCores - busy;
+    int utilization = (static_cast<double>(busy) / totalCores) * 100;
+
+    std::cout << "========== System Summary ============\n";
+    std::cout << "CPU Utilization: " << utilization << "%\n";
+    std::cout << "Cores Used: " << busy << "\n";
+    std::cout << "Cores available: " << available << "\n";
+    std::cout << "======================================\n";
 }
+
 
 void printHelpMenu() {
     cout << "\n";

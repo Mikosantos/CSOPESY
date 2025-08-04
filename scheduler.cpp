@@ -54,3 +54,12 @@ std::vector<std::shared_ptr<Process>> Scheduler::getRunningProcesses() const {
 
     return result;
 }
+
+std::shared_ptr<Process> Scheduler::getProcessOnCore(int coreId) const {
+    if (coreId < 0 || coreId >= cores.size()) {
+        return nullptr;
+    }
+    
+    std::lock_guard<std::mutex> lock(cores[coreId]->lock);
+    return cores[coreId]->assignedProcess;
+}

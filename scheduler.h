@@ -53,6 +53,7 @@ public:
     virtual void addProcess(const std::shared_ptr<Process>& proc);
     virtual int getBusyCoreCount() const;
     int getAvailableCoreCount() const;
+    int getTotalCoreCount() const { return coreCount; }
     int getCPUTicks() const { return cpuTicks.load(); }
     
     // for ticks
@@ -75,6 +76,12 @@ public:
     */
     virtual std::vector<std::shared_ptr<Process>> getRunningProcesses() const;
 
+    /*
+    Returns the process currently assigned to a specific core.
+    Returns nullptr if no process is assigned to the given core.
+    This method is thread-safe and locks the core's mutex during access.
+    */
+    virtual std::shared_ptr<Process> getProcessOnCore(int coreId) const;
 
     // int getSystemTick() const {
     //     return systemTick.load();

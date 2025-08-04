@@ -268,6 +268,15 @@ std::vector<std::shared_ptr<Process>> RRScheduler::getRunningProcesses() const {
     return result;
 }
 
+std::shared_ptr<Process> RRScheduler::getProcessOnCore(int coreId) const {
+    if (coreId < 0 || coreId >= coreCount) {
+        return nullptr;
+    }
+    
+    std::lock_guard<std::mutex> lock(assignmentsMutex);
+    return coreAssignments[coreId];
+}
+
 std::vector<std::shared_ptr<Process>> RRScheduler::getReadyQueueSnapshot() const {
     std::vector<std::shared_ptr<Process>> snapshot;
     std::lock_guard<std::mutex> lock(queueMutex);
