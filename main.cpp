@@ -657,49 +657,70 @@ void report_util(const std::vector<std::shared_ptr<Process>>& allProcesses,
         return;
     }
 
-    int busy = scheduler->getBusyCoreCount();
-    int total = scheduler->getAvailableCoreCount() + busy;
-    int utilization = (static_cast<double>(busy) / total) * 100;
+    // System Summary (like printSystemSummary)
+    int totalCores = scheduler->getTotalCoreCount();
+    int busy = 0;
+
+    for (int core = 0; core < totalCores; ++core) {
+        auto process = scheduler->getProcessOnCore(core);
+        if (process && memoryManager->getProcessUsedMemory(process->getProcessNo()) > 0) {
+            busy++;
+        }
+    }
+
+    int available = totalCores - busy;
+    int utilization = (static_cast<double>(busy) / totalCores) * 100;
 
     log << "========== System Summary ============\n";
-    if (scheduler) {
-        log << "CPU Utilization: " << utilization << "%\n";
-        log << "Cores Used: " << scheduler->getBusyCoreCount() << "\n";
-        log << "Cores available: " << scheduler->getAvailableCoreCount() << "\n";
-    } else {
-        log << "Scheduler not running.\n";
-    }
+    log << "CPU Utilization: " << utilization << "%\n";
+    log << "Cores Used: " << busy << "\n";
+    log << "Cores available: " << available << "\n";
     log << "======================================\n";
 
-    // Running processes
-    std::unordered_set<std::shared_ptr<Process>> runningSet(runningProcesses.begin(), runningProcesses.end());
+    // Process listing (like consolePanel.listProcesses)
+    std::vector<std::shared_ptr<Process>> trulyRunning;
+    for (const auto& proc : scheduler->getRunningProcesses()) {
+        if (memoryManager->getProcessUsedMemory(proc->getProcessNo()) > 0) {
+            trulyRunning.push_back(proc);
+        }
+    }
+
+    std::unordered_set<std::shared_ptr<Process>> runningSet(trulyRunning.begin(), trulyRunning.end());
 
     log << "Running Processes:\n";
-    for (const auto& proc : runningProcesses) {
+    for (const auto& proc : trulyRunning) {
         auto snapshot = proc->getAtomicSnapshot();
         if (snapshot.processName == "MAIN_SCREEN") continue;
 
         log << std::left << std::setw(15) << snapshot.processName
-                  << snapshot.time << "   "
-                  << "Core: " << snapshot.coreNo <<  "   "
-                  << snapshot.completedCommands
-                  << " / "
-                  << snapshot.totalNoCommands
-                  << "\n";
+            << snapshot.time << "   "
+            << "Core: " << snapshot.coreNo << "   "
+            << snapshot.completedCommands
+            << " / "
+            << snapshot.totalNoCommands
+            << "\n";
     }
 
     log << "\nFinished Processes:\n";
+    int count = 0;
     for (const auto& proc : allProcesses) {
         if (proc->getProcessName() == "MAIN_SCREEN") continue;
 
         if (proc->isFinished() && !runningSet.count(proc)) {
-            log << proc->getProcessName() << "\t\t"
-                      << proc->getRawTime()                            << "   "
-                      << "Finished!"                                << "   "
-                      << proc->getCompletedCommands() << " / "
-                      << proc->getTotalNoOfCommands() 
-                      << "\n";
+            log << std::left << std::setw(15) << proc->getProcessName()
+                << proc->getTime() << "   "
+                << "Finished!" << "   "
+                << proc->getCompletedCommands() << " / "
+                << proc->getTotalNoOfCommands()
+                << "\n";
+            count++;
         }
+    }
+
+    if (count == 0) {
+        log << "\nNo finished processes.\n";
+    } else {
+        log << "\nTotal finished processes: " << count << "\n";
     }
 
     log << "======================================\n\n";
