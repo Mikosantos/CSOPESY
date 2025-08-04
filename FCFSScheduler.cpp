@@ -101,7 +101,7 @@ void FCFSScheduler::coreWorker(int coreId) {
 
     while (running) {
         std::unique_lock<std::mutex> lock(core->lock);
-        core->cv.wait(lock, [&]() {
+        core->cv.wait_for(lock, std::chrono::milliseconds(1), [&]() {
             return core->assignedProcess != nullptr || !running;
         });
 
