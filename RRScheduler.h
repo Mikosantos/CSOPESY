@@ -38,6 +38,7 @@ public:
     // Override printing methods to use coreAssignments
     int getBusyCoreCount() const override;
     std::vector<std::shared_ptr<Process>> getRunningProcesses() const override;
+    std::shared_ptr<Process> getProcessOnCore(int coreId) const override;
 
     uint64_t getTotalCpuTicks() const override {
         uint64_t sum = 0;
