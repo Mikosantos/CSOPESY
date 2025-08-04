@@ -491,11 +491,6 @@ bool Process::isRunning() const {
 // NEW MO2 INSTRUCTION SIMULATION FUNCTIONS ==================================================
 void Process::writeToMemory(int vAddr, uint16_t value) {
     if (vAddr < 0 || vAddr + 1 >= static_cast<int>(memSize)) {
-        // debugging
-        // std::cerr << "[ERROR] Process " << processName
-        //           << " tried to WRITE to invalid address: 0x"
-        //           << std::hex << vAddr << " (memSize: " << std::dec << memSize << ")\n";
-        // std::cout << "❗Memory violation triggered at 0x" << std::hex << vAddr << std::dec << "\n";
         setMemoryViolation(vAddr);
         return;
     }
@@ -504,10 +499,6 @@ void Process::writeToMemory(int vAddr, uint16_t value) {
 
 uint16_t Process::readFromMemory(int vAddr) {
     if (vAddr < 0 || vAddr + 1 >= static_cast<int>(memSize)) {
-        // std::cerr << "[ERROR] Process " << processName
-        //           << " tried to READ from invalid address: 0x"
-        //           << std::hex << vAddr << " (memSize: " << std::dec << memSize << ")\n";
-        setMemoryViolation(vAddr);
         return 0;
     }
     return memManager->readByte(processNum, vAddr);
@@ -515,8 +506,8 @@ uint16_t Process::readFromMemory(int vAddr) {
 
 
 void Process::initializePages(size_t  memPerFrame) {
-    numPages = (memSize + memPerFrame - 1) / memPerFrame;   // ceil division
-    pageTable.resize(numPages, -1);                         // -1 means page not loaded (demand paging)
+    numPages = (memSize + memPerFrame - 1) / memPerFrame;   
+    pageTable.resize(numPages, -1);                         
 }
 
 void Process::setPageFrame(size_t  pageIndex, int frameNo) {

@@ -72,7 +72,7 @@ void FCFSScheduler::schedulerLoop() {
                     if (!nextProc->isMemoryInitialized()) {
                         std::lock_guard<std::mutex> memLock(memoryAllocationMutex);
 
-                        // Try to allocate memory; if not enough, requeue and skip this core cycle
+                        // Try to allocate memory; if not enough, requeue and skip this core cycle (always true)
                         if (!memoryManager->allocateProcess(nextProc->getProcessNo(), nextProc->getMemSize())) {
                             nextProc->setMemoryInitialized(false);
                             std::lock_guard<std::mutex> qLock(queueMutex);

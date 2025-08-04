@@ -143,7 +143,6 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
     } 
 
     // MO2 NEW COMMANDS ===========
-    // TODO: Check numbers/output
     else if (cmd == "process-smi") {
         constexpr size_t KIB = 1024;
         constexpr size_t MIB = KIB * 1024;
@@ -182,7 +181,6 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
         std::cout << "+----------------------------------------------------+\n\n";
     }
 
-     // TODO: Check numbers/output
     else if (cmd == "vmstat") {
         std::cout << "\n";
         std::cout << "+----------------------------------------------------+\n";

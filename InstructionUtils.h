@@ -206,7 +206,6 @@ inline std::vector<Instruction> generateRandomInstructions(unsigned long long ta
                 break;
             }
 
-            // TODO: ADD CHECKER THAT ENSURES GENERATED ADDRESS ARE WITHIN MEMORY LIMITS
             case 6: { // READ
                 if (declaredVars.empty()) continue;
 
@@ -245,7 +244,6 @@ inline std::vector<Instruction> generateRandomInstructions(unsigned long long ta
 // NEW MO2 INSTRUCTION GENERATOR; FOR SCREEN -C COMMAND
 // This function generates fixed instructions based on a vector of raw instruction strings.
 
-// TODO: FOR LOOP
 inline std::vector<Instruction> generateFixedInstructions(const std::vector<std::string>& rawInstructions) {
     std::vector<Instruction> result;
 
@@ -308,7 +306,6 @@ inline std::vector<Instruction> generateFixedInstructions(const std::vector<std:
             iss >> instr.sleepTicks;
         }
 
-        // TODO: EDIT READ AND WRITE
         else if (token == "READ") {
             instr.type = InstructionType::READ;
             iss >> instr.var1 >> instr.memoryAddressStr;
