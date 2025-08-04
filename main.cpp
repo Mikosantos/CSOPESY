@@ -216,7 +216,14 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
     
     else if (cmd == "screen" && args.size() == 1 && args[0] == "-ls") {
         printSystemSummary();
-        consolePanel.listProcesses(processList, scheduler->getRunningProcesses());
+        std::vector<std::shared_ptr<Process>> trulyRunning;
+        for (const auto& proc : scheduler->getRunningProcesses()) {
+            if (memoryManager->getProcessUsedMemory(proc->getProcessNo()) > 0) {
+                trulyRunning.push_back(proc);
+            }
+        }
+        consolePanel.listProcesses(processList, trulyRunning);
+
     } 
     
     else if (cmd == "screen" && args.size() >= 3 && args[0] == "-s") {
