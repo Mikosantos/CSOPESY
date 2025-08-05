@@ -9,7 +9,11 @@ enum class InstructionType {
     ADD,
     SUBTRACT,
     SLEEP,
-    FOR
+    FOR,
+
+    // NEW MO2 INSTRUCTION TYPES
+    READ,    
+    WRITE    
 };
 
 struct Instruction {
@@ -39,5 +43,10 @@ struct Instruction {
     // For FOR loop
     std::vector<Instruction> loopInstructions;
     int loopRepeat = 0;
+
+    // NEW MO2 INSTRUCTION TYPES
+    // For READ/WRITE
+    std::string memoryAddressStr;   // Used for READ and WRITE
+    int memoryAddress = 0;
 };
 

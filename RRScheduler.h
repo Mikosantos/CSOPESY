@@ -17,8 +17,17 @@ private:
     std::vector<std::thread> coreThreads;
     std::vector<std::shared_ptr<Process>> coreAssignments;
     std::unordered_set<std::shared_ptr<Process>> assignedProcesses; // Track all assigned processes
+
+    Config config;
+    std::shared_ptr<MemoryManager> memoryManager;
+
+    std::vector<uint64_t> totalTicksPerCore;
+    std::vector<uint64_t> activeTicksPerCore;
+
+    mutable std::mutex queueMutex;
+
 public:
-    RRScheduler(int cores, int delay, unsigned long long quantum);
+    RRScheduler(int cores, int delay, unsigned long long quantum, const Config& config, std::shared_ptr<MemoryManager> memManager);
 
     void start() override;
     void stop() override;
@@ -29,4 +38,23 @@ public:
     // Override printing methods to use coreAssignments
     int getBusyCoreCount() const override;
     std::vector<std::shared_ptr<Process>> getRunningProcesses() const override;
+    std::shared_ptr<Process> getProcessOnCore(int coreId) const override;
+
+    uint64_t getTotalCpuTicks() const override {
+        uint64_t sum = 0;
+        for (auto ticks : totalTicksPerCore) sum += ticks;
+        return sum;
+    }
+
+    uint64_t getActiveCpuTicks() const override {
+        uint64_t sum = 0;
+        for (auto ticks : activeTicksPerCore) sum += ticks;
+        return sum;
+    }
+
+    uint64_t getIdleCpuTicks() const override {
+        return getTotalCpuTicks() - getActiveCpuTicks();
+    }
+
+    std::vector<std::shared_ptr<Process>> getReadyQueueSnapshot() const override;
 };

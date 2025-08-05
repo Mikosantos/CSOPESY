@@ -12,6 +12,7 @@
 #define ORANGE "\033[38;5;208m"
 #define RESET  "\033[0m"
 #define BLUE   "\033[34m"
+#define LIGHT_RED "\033[91m"
 
 std::shared_ptr<Console> ConsolePanel::curPanel = nullptr;
 std::vector<std::shared_ptr<Console>> ConsolePanel::consolePanels;
@@ -85,6 +86,7 @@ void ConsolePanel::listProcesses(const std::vector<std::shared_ptr<Process>>& al
     }
 
     std::cout << "\nFinished Processes:\n";
+    int count = 0;
     for (const auto& proc : allProcesses) {
         if (proc->getProcessName() == "MAIN_SCREEN") continue;
 
@@ -95,7 +97,14 @@ void ConsolePanel::listProcesses(const std::vector<std::shared_ptr<Process>>& al
                       << ORANGE     << proc->getCompletedCommands() << RESET << BLUE << " / " << RESET
                       << ORANGE     << proc->getTotalNoOfCommands() << RESET
                       << "\n";
+            count++;
         }
+    }
+
+    if (count == 0) {
+        std::cout << LIGHT_RED << "\nNo finished processes.\n" << RESET;
+    } else {
+        std::cout << "\nTotal finished processes: " << ORANGE << count << RESET << "\n";
     }
 
     std::cout << "======================================\n\n";
@@ -106,4 +115,35 @@ void ConsolePanel::listProcesses(const std::vector<std::shared_ptr<Process>>& al
 // This function adds a new console panel (screen) to the list of console panels.
 void ConsolePanel::addConsolePanel(std::shared_ptr<Console> screenPanel){
     consolePanels.push_back(screenPanel);
+}
+
+void ConsolePanel::listMemoryUsageOfRunningProcesses(
+    const std::vector<std::shared_ptr<Process>>& runningProcesses,
+    std::shared_ptr<MemoryManager> memManager
+) {
+    constexpr size_t KIB = 1024;
+
+    if (runningProcesses.empty()) {
+        std::cout << LIGHT_RED << "No running processes.\n" << RESET;
+        return;
+    }
+
+    std::unordered_map<int, size_t> memSnapshot = memManager->getAllProcessMemoryUsage();
+
+    for (const auto& proc : runningProcesses) {
+        auto snapshot = proc->getAtomicSnapshot();
+        if (snapshot.processName == "MAIN_SCREEN") continue;
+
+        size_t memBytes = 0;
+        auto it = memSnapshot.find(snapshot.processNum);
+        if (it != memSnapshot.end()) {
+            memBytes = it->second;
+        }
+
+        // Skip processes with 0 memory usage
+        if (memBytes == 0) continue;
+
+        std::cout << std::left << std::setw(20) << snapshot.processName
+                  << ORANGE << memBytes << " Byte" << RESET << "\n";
+    }
 }

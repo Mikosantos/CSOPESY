@@ -2,7 +2,9 @@
 #include <chrono>
 #include <thread>
 
-FCFSScheduler::FCFSScheduler(int cores, unsigned long long delay) : Scheduler(cores, delay) {}
+FCFSScheduler::FCFSScheduler(int cores, unsigned long long delay, const Config& config, std::shared_ptr<MemoryManager> memManager)
+    : Scheduler(cores, delay), config(config), memoryManager(memManager) {}
+
 
 FCFSScheduler::~FCFSScheduler() {
     stop();
@@ -12,11 +14,17 @@ FCFSScheduler::~FCFSScheduler() {
 void FCFSScheduler::start() {
     running = true;
 
+    // cores.resize(coreCount);
     cores.reserve(coreCount);
+
+    totalTicksPerCore.resize(coreCount, 0);
+    activeTicksPerCore.resize(coreCount, 0);
+
     for (int i = 0; i < coreCount; ++i) {
         auto core = std::make_unique<CPUCore>();
         core->thread = std::thread(&FCFSScheduler::coreWorker, this, i);
         cores.push_back(std::move(core));
+        // cores[i] = std::move(core);
     }
 
     schedulerThread = std::thread(&FCFSScheduler::schedulerLoop, this);
@@ -61,6 +69,21 @@ void FCFSScheduler::schedulerLoop() {
                 }
 
                 if (nextProc) {
+                    if (!nextProc->isMemoryInitialized()) {
+                        std::lock_guard<std::mutex> memLock(memoryAllocationMutex);
+
+                        // Try to allocate memory; if not enough, requeue and skip this core cycle (always true)
+                        if (!memoryManager->allocateProcess(nextProc->getProcessNo(), nextProc->getMemSize())) {
+                            nextProc->setMemoryInitialized(false);
+                            std::lock_guard<std::mutex> qLock(queueMutex);
+                            readyQueue.push(nextProc);
+                            continue;
+                        }
+
+                        nextProc->initializePages(config.memPerFrame);
+                        nextProc->markMemoryInitialized(); 
+                    }
+
                     core->assignedProcess = nextProc;
                     core->busy = true;
                     nextProc->setCoreNum(i);
@@ -78,14 +101,22 @@ void FCFSScheduler::coreWorker(int coreId) {
 
     while (running) {
         std::unique_lock<std::mutex> lock(core->lock);
-        core->cv.wait(lock, [&]() {
+        core->cv.wait_for(lock, std::chrono::milliseconds(1), [&]() {
             return core->assignedProcess != nullptr || !running;
         });
 
         if (!running) break;
 
+        // If still no assigned process after waiting, count idle tick
+        if (!core->assignedProcess) {
+            totalTicksPerCore[coreId]++;
+            continue; // go back to waiting
+        }
+
         auto proc = core->assignedProcess;
         lock.unlock();
+
+        bool requeued = false;
 
         while (running && proc->getCompletedCommands() < proc->getTotalNoOfCommands()) {
             int currentTick = getCoreTick(coreId);
@@ -94,27 +125,75 @@ void FCFSScheduler::coreWorker(int coreId) {
             if (proc->isSleeping(currentTick)) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(50));
                 incrementCoreTick(coreId);
+                totalTicksPerCore[coreId]++;
+                activeTicksPerCore[coreId]++;
                 continue;
             }
 
             // NOTE: passing currentTick for SLEEP and FOR instruction
-            proc->executeInstruction(coreId, currentTick);
+            bool success = proc->executeInstruction(coreId, currentTick);
+            if (!success) {
+                if (proc->hasMemoryViolation()) {
+                    proc->setFinished(true);
+                    break;
+                } else {
+                    // Requeue
+                    {
+                        std::lock_guard<std::mutex> qLock(queueMutex);
+                        readyQueue.push(proc);
+                        // proc->setCoreNum(-1);
+                    }
+                }
+
+                requeued = true;
+                break;
+            }
 
             // Simulate execution delay from delayPerExec
             if (delayPerExec > 0) {
                 for (int i = 0; i < delayPerExec; ++i) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(1));
                     incrementCoreTick(coreId);
+                    totalTicksPerCore[coreId]++;
+                    activeTicksPerCore[coreId]++;
                 }
             } else {
                 incrementCoreTick(coreId);  // Only add 1 tick if no delay is set
+                totalTicksPerCore[coreId]++;
+                activeTicksPerCore[coreId]++;
             }
         }
 
-        proc->setFinished(true);
+        // proc->setFinished(true);
+        
+        // Only mark and clean up if not requeued
+        if (!requeued) {
+            proc->setFinished(true);
+            // proc->setCoreNum(-1); // Mark as not assigned to any core
+
+            proc->setMemoryInitialized(false);
+
+            // DEALLOCATE MEMORY
+            if (memoryManager) {
+                memoryManager->deallocateProcess(proc->getProcessNo());
+            }
+        }
+
         lock.lock();
         core->assignedProcess = nullptr;
         core->busy = false;
         lock.unlock();
     }
+}
+
+std::vector<std::shared_ptr<Process>> FCFSScheduler::getReadyQueueSnapshot() const {
+    std::vector<std::shared_ptr<Process>> snapshot;
+    std::lock_guard<std::mutex> lock(queueMutex);
+    std::queue<std::shared_ptr<Process>> tempQueue = readyQueue;
+
+    while (!tempQueue.empty()) {
+        snapshot.push_back(tempQueue.front());
+        tempQueue.pop();
+    }
+    return snapshot;
 }

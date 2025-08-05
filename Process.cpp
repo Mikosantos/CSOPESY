@@ -4,6 +4,7 @@
 #include <sstream>
 #include <iostream>
 #include <iomanip>
+#include "utils.h"
 
 #define ORANGE "\033[38;5;208m"
 #define BLUE   "\033[34m"
@@ -11,14 +12,14 @@
 
 int Process::NextProcessNum = 1;
 
-Process::Process(std::string& pName, int totalCom)
-: processName(pName), totalNoOfCommands(totalCom) {
+Process::Process(std::string& pName, int totalCom, size_t memSize, std::shared_ptr<MemoryManager> memManager)
+: processName(pName), totalNoOfCommands(totalCom), memSize(memSize), memManager(memManager) {
     time = std::chrono::system_clock::now();
     setCompletedCommands(0);
     setCoreNum(-1);
     setProcessNum(NextProcessNum++);
     setFinished(false);
-};
+}
 
 // getters ---------------------------------------------------
 std::string Process::getTime() {
@@ -223,17 +224,65 @@ bool Process::executeInstruction(int coreId, int currentTick) {
         instr = instructions[instructionPointer++];
     }
 
+    //handle MEMORY ACCESS instruction : NOT NEEDED 
+    // if (instr.type == InstructionType::READ || instr.type == InstructionType::WRITE) {
+    //     int virtualAddr = instr.memoryAddress;
+    //     if (virtualAddr < 0 || virtualAddr + 1 >= static_cast<int>(memSize)) {
+    //         setMemoryViolation(virtualAddr);
+    //         return false;  // prevent page load
+    //     }
+
+    //     int pageNo = virtualAddr / memManager->getPageSize();
+    //     if (!memManager->ensurePageLoaded(processNum, pageNo)) {
+    //         return false;
+    //     }
+    // }
+
     instr.executedTimestamp = generateCurrentTimestamp();
     instr.executedCore = coreId;
 
     std::ostringstream log;
+    std::string msg;
+
     // Execute instruction and increment completedCommands for every executed instruction
     switch (instr.type) {
-        case InstructionType::PRINT:            
+        case InstructionType::PRINT: {
             log << instr.executedTimestamp << "   Core: " << coreId << "   ";
-            log << "\"Hello world from " << processName << "!\" \n";
-            completedCommands++; 
+            std::string msg = instr.message;
+
+            // Handle concatenation if "+" is present
+            size_t plusPos = msg.find("+");
+            if (plusPos != std::string::npos) {
+                std::string left = trim(msg.substr(0, plusPos));
+                std::string right = trim(msg.substr(plusPos + 1));
+
+                // Remove quotes from the left part if present
+                if (!left.empty() && left.front() == '"' && left.back() == '"') {
+                    left = left.substr(1, left.size() - 2);
+                }
+
+                // Get variable value or fallback
+                std::string rightVal;
+                if (variables.find(right) != variables.end()) {
+                    rightVal = std::to_string(getVariable(right));
+                } else {
+                    rightVal = "[undefined:" + right + "]";
+                }
+
+                msg = left + rightVal;
+            }
+            else {
+                std::string trimmed = trim(msg);
+                if (variables.find(trimmed) != variables.end()) {
+                    msg = std::to_string(getVariable(trimmed));
+                }
+            }
+
+            // Just print as-is if no concatenation
+            log << "\"" << msg << "\"\n";
+            completedCommands++;
             break;
+        }
 
         case InstructionType::DECLARE:
             declareVariable(instr.var1, instr.value);
@@ -268,6 +317,48 @@ bool Process::executeInstruction(int coreId, int currentTick) {
                 // DO NOT increment completedCommands here because the loop body will be counted
             }
             break;
+
+        case InstructionType::READ: {
+            try {
+                uint16_t value = readFromMemory(instr.memoryAddress); 
+                if (hasMemoryViolation()) return false;
+
+                // Declare variable if not already declared; not sure if this is needed
+                if(!isDeclared(instr.var1)) {
+                    declareVariable(instr.var1, value);
+                }
+
+                setVariable(instr.var1, value);
+
+                // debugging
+                // log << "READ " << instr.var1 << " <- [0x" << std::hex << instr.memoryAddress << "] = " << std::dec << value << "\n";
+            } catch (const std::exception& e) {
+                log << "Memory READ failed at address: 0x" << std::hex << instr.memoryAddress << " (" << e.what() << ")\n";
+                setFinished(true);  // simulate process kill
+                break;
+            }
+
+            completedCommands++;
+            break;
+        }
+
+        case InstructionType::WRITE: {
+            try {
+                uint16_t value = getVariable(instr.var1);
+                writeToMemory(instr.memoryAddress, value);
+                if (hasMemoryViolation()) return false;
+
+                // debugging
+                // log << "WRITE [0x" << std::hex << instr.memoryAddress << "] <- " << std::dec << value << "\n";
+            } catch (const std::exception& e) {
+                log << "Memory WRITE failed at address: 0x" << std::hex << instr.memoryAddress << " (" << e.what() << ")\n";
+                setFinished(true);  // simulate process kill
+                break;
+            }
+
+            completedCommands++;
+            break;
+        }
     }
 
     appendLogLine(log.str());
@@ -282,15 +373,74 @@ bool Process::executeInstruction(int coreId, int currentTick) {
 // Declare a variable with an optional initial value
 void Process::declareVariable(const std::string& name, uint16_t value) {
     variables[name] = value;
+
+    if (symbolTableOffsets.size() >= 32) return; // Full
+    if (symbolTableOffsets.count(name)) return;  // Already declared
+
+    int offset = symbolTableOffsets.size() * 2;
+    int vAddr = SYMBOL_TABLE_START + offset;
+
+    // test
+    if (vAddr < 0 || vAddr + 1 >= static_cast<int>(memSize)) {
+        setMemoryViolation(vAddr);
+        return;
+    }
+
+    int pageNo = vAddr / memManager->getPageSize();
+    if (!memManager->ensurePageLoaded(processNum, pageNo)) {
+        setMemoryViolation(vAddr);
+        return;
+    }
+
+    symbolTableOffsets[name] = offset;
+    writeToMemory(vAddr, value);
 }
 
 uint16_t Process::getVariable(const std::string& name) const {
-    auto it = variables.find(name);
-    return (it != variables.end()) ? it->second : 0;
+    // auto it = variables.find(name);
+    // return (it != variables.end()) ? it->second : 0;
+
+    auto it = symbolTableOffsets.find(name);
+    if (it == symbolTableOffsets.end()) return 0;
+
+    int vAddr = SYMBOL_TABLE_START + it->second;
+
+    // test
+    if (vAddr < 0 || vAddr + 1 >= static_cast<int>(memSize)) {
+        const_cast<Process*>(this)->setMemoryViolation(vAddr);
+        return 0;
+    }
+
+    int pageNo = vAddr / memManager->getPageSize();
+    if (!memManager->ensurePageLoaded(processNum, pageNo)) {
+        const_cast<Process*>(this)->setMemoryViolation(vAddr);
+        return 0;
+    }
+
+    return memManager->readByte(processNum, vAddr);
 }
 
 void Process::setVariable(const std::string& name, uint16_t value) {
-    variables[name] = value;
+    variables[name] = value; // prev implementation
+
+    auto it = symbolTableOffsets.find(name);
+    if (it == symbolTableOffsets.end()) return;
+
+    int vAddr = SYMBOL_TABLE_START + it->second;
+
+    // test
+    if (vAddr < 0 || vAddr + 1 >= static_cast<int>(memSize)) {
+        const_cast<Process*>(this)->setMemoryViolation(vAddr);
+        return;
+    }
+
+    int pageNo = vAddr / memManager->getPageSize();
+    if (!memManager->ensurePageLoaded(processNum, pageNo)) {
+        setMemoryViolation(vAddr);
+        return;
+    }
+
+    memManager->writeByte(processNum, vAddr, value);
 }
 
 // Get the current instruction based on the instruction pointer.
@@ -337,3 +487,37 @@ void Process::appendLogLine(const std::string& line) {
 bool Process::isRunning() const {
     return !finished && coreNum != -1;
 }
+
+// NEW MO2 INSTRUCTION SIMULATION FUNCTIONS ==================================================
+void Process::writeToMemory(int vAddr, uint16_t value) {
+    if (vAddr < 0 || vAddr + 1 >= static_cast<int>(memSize)) {
+        setMemoryViolation(vAddr);
+        return;
+    }
+    memManager->writeByte(processNum, vAddr, value);
+}
+
+uint16_t Process::readFromMemory(int vAddr) {
+    if (vAddr < 0 || vAddr + 1 >= static_cast<int>(memSize)) {
+        return 0;
+    }
+    return memManager->readByte(processNum, vAddr);
+}
+
+
+void Process::initializePages(size_t  memPerFrame) {
+    numPages = (memSize + memPerFrame - 1) / memPerFrame;   
+    pageTable.resize(numPages, -1);                         
+}
+
+void Process::setPageFrame(size_t  pageIndex, int frameNo) {
+    if (pageIndex >= 0 && pageIndex < pageTable.size()) {
+        pageTable[pageIndex] = frameNo;
+    }
+}
+
+bool Process::isPageLoaded(size_t  pageIndex) const {
+    if (pageIndex < 0 || pageIndex >= pageTable.size()) return false;
+    return pageTable[pageIndex] != -1;
+}
+

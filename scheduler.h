@@ -20,7 +20,7 @@ protected:
         std::shared_ptr<Process> assignedProcess;
         std::mutex lock;
         std::condition_variable cv;
-        bool busy = false;
+        std::atomic<bool> busy{false};
     };
 
     std::vector<std::unique_ptr<CPUCore>> cores;
@@ -37,6 +37,9 @@ protected:
 
     std::vector<std::thread> tickThreads;
 
+    std::atomic<uint64_t> totalCpuTicks = 0;
+    std::atomic<uint64_t> idleCpuTicks = 0;
+
 public:
     Scheduler(int cores, unsigned long long delay);
     virtual ~Scheduler();
@@ -50,6 +53,7 @@ public:
     virtual void addProcess(const std::shared_ptr<Process>& proc);
     virtual int getBusyCoreCount() const;
     int getAvailableCoreCount() const;
+    int getTotalCoreCount() const { return coreCount; }
     int getCPUTicks() const { return cpuTicks.load(); }
     
     // for ticks
@@ -72,6 +76,12 @@ public:
     */
     virtual std::vector<std::shared_ptr<Process>> getRunningProcesses() const;
 
+    /*
+    Returns the process currently assigned to a specific core.
+    Returns nullptr if no process is assigned to the given core.
+    This method is thread-safe and locks the core's mutex during access.
+    */
+    virtual std::shared_ptr<Process> getProcessOnCore(int coreId) const;
 
     // int getSystemTick() const {
     //     return systemTick.load();
@@ -80,6 +90,14 @@ public:
     // void incrementSystemTick() {
     //     systemTick++;
     // }
+
+    virtual uint64_t getTotalCpuTicks() const { return totalCpuTicks.load(); }
+    virtual uint64_t getIdleCpuTicks() const { return idleCpuTicks.load(); }
+    virtual uint64_t getActiveCpuTicks() const {
+        return totalCpuTicks.load() - idleCpuTicks.load();
+    }
+
+    virtual std::vector<std::shared_ptr<Process>> getReadyQueueSnapshot() const = 0;
 };
 
 
