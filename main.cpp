@@ -159,11 +159,18 @@ void handleMainScreenCommands(const string& cmd, const vector<string>& args, Con
         // double usedKiB = usedMem / static_cast<double>(KIB);
         // double totalKiB = config.maxOverallMemory / static_cast<double>(KIB);
 
-        int busy = scheduler->getBusyCoreCount();
-        int total = scheduler->getAvailableCoreCount() + busy;
+        int totalCores = scheduler->getTotalCoreCount();
+        int busy = 0;
+
+        for (int core = 0; core < totalCores; ++core) {
+            auto process = scheduler->getProcessOnCore(core);
+            if (process && memoryManager->getProcessUsedMemory(process->getProcessNo()) > 0) {
+                busy++;
+            }
+        }
         auto runningProcesses = scheduler->getRunningProcesses();
 
-        int cpuUtil = (static_cast<double>(busy) / total) * 100;
+        int cpuUtil = (static_cast<double>(busy) / totalCores) * 100;
         int memUtil = static_cast<int>((static_cast<double>(usedMem) / config.maxOverallMemory) * 100);
 
         std::cout << "\n";
